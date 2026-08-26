@@ -1,0 +1,7 @@
+- id: automated-code-review
+  name: Automated Forward-Chaining Code Review
+  description: Multi-pass AST linting and complexity rule engine
+  entry: python -m reviewer review
+  language: python
+  types: [python]
+  args: [--fail-under, "70"]

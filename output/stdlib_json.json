@@ -1,0 +1,1058 @@
+{
+  "root": "C:\\Users\\HC\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\json",
+  "mode": "full",
+  "summary": {
+    "files_reviewed": 6,
+    "sloc": 1169,
+    "findings": 40,
+    "by_severity": {
+      "critical": 0,
+      "high": 2,
+      "medium": 24,
+      "low": 14
+    },
+    "by_category": {
+      "complexity": 31,
+      "correctness": 3,
+      "maintainability": 6
+    }
+  },
+  "health": {
+    "score": 53.0,
+    "grade": "F",
+    "components": {
+      "finding_density": 18.44,
+      "complexity": 20.0,
+      "duplication": 0.0,
+      "documentation": 8.57,
+      "weighted_severity": 98.0,
+      "sloc": 1169.0,
+      "avg_complexity": 9.48,
+      "doc_coverage": 0.57
+    }
+  },
+  "churn": {
+    "source": "static-proxy",
+    "raw": {
+      "__init__.py": 407.0,
+      "__main__.py": 15.0,
+      "decoder.py": 510.0,
+      "encoder.py": 819.0,
+      "scanner.py": 204.0,
+      "tool.py": 189.0
+    }
+  },
+  "diff": null,
+  "findings": [
+    {
+      "file": "encoder.py",
+      "line": 265,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_make_iterencode' cyclomatic complexity 60 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 265,
+      "rule": "long-function",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_make_iterencode' is 197 lines (max 60)",
+      "why": "a function longer than a screen cannot be diffed or reviewed as a unit, so changes to it are approved without being understood.",
+      "suggestion": "split it along its comment headings into separate functions",
+      "function": "",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 265,
+      "rule": "shadowed-builtin",
+      "severity": "medium",
+      "category": "correctness",
+      "message": "parameter 'dict' shadows the builtin of the same name",
+      "why": "rebinding a builtin makes later code in the same scope call the local value instead, producing TypeErrors far from the assignment.",
+      "suggestion": "rename it (e.g. 'dict_' or a domain word)",
+      "function": "",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 280,
+      "rule": "deep-nesting",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_iterencode_list' nests control flow 10 levels deep (max 4)",
+      "why": "each nesting level multiplies the conditions a reader must track; deeply nested code is where inverted-condition bugs live.",
+      "suggestion": "invert conditions to return early, or extract the inner loop",
+      "function": "_make_iterencode",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 280,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_iterencode_list' cyclomatic complexity 19 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "_make_iterencode",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 339,
+      "rule": "deep-nesting",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_iterencode_dict' nests control flow 10 levels deep (max 4)",
+      "why": "each nesting level multiplies the conditions a reader must track; deeply nested code is where inverted-condition bugs live.",
+      "suggestion": "invert conditions to return early, or extract the inner loop",
+      "function": "_make_iterencode",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 339,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_iterencode_dict' cyclomatic complexity 29 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "_make_iterencode",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 339,
+      "rule": "long-function",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_iterencode_dict' is 86 lines (max 60)",
+      "why": "a function longer than a screen cannot be diffed or reviewed as a unit, so changes to it are approved without being understood.",
+      "suggestion": "split it along its comment headings into separate functions",
+      "function": "_make_iterencode",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 426,
+      "rule": "deep-nesting",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_iterencode' nests control flow 10 levels deep (max 4)",
+      "why": "each nesting level multiplies the conditions a reader must track; deeply nested code is where inverted-condition bugs live.",
+      "suggestion": "invert conditions to return early, or extract the inner loop",
+      "function": "_make_iterencode",
+      "risk": 18.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 426,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_iterencode' cyclomatic complexity 14 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "_make_iterencode",
+      "risk": 18.0
+    },
+    {
+      "file": "tool.py",
+      "line": 88,
+      "rule": "unclosed-resource",
+      "severity": "high",
+      "category": "correctness",
+      "message": "open() result is not managed by a `with` block",
+      "why": "a file handle left outside `with` is only closed by the garbage collector; on an exception the write is never flushed.",
+      "suggestion": "wrap it: `with open(path) as fh:` so it closes on any exit",
+      "function": "main",
+      "risk": 12.8
+    },
+    {
+      "file": "tool.py",
+      "line": 102,
+      "rule": "unclosed-resource",
+      "severity": "high",
+      "category": "correctness",
+      "message": "open() result is not managed by a `with` block",
+      "why": "a file handle left outside `with` is only closed by the garbage collector; on an exception the write is never flushed.",
+      "suggestion": "wrap it: `with open(path) as fh:` so it closes on any exit",
+      "function": "main",
+      "risk": 12.8
+    },
+    {
+      "file": "decoder.py",
+      "line": 137,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'JSONObject' cyclomatic complexity 23 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 12.333
+    },
+    {
+      "file": "decoder.py",
+      "line": 137,
+      "rule": "long-function",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'JSONObject' is 83 lines (max 60)",
+      "why": "a function longer than a screen cannot be diffed or reviewed as a unit, so changes to it are approved without being understood.",
+      "suggestion": "split it along its comment headings into separate functions",
+      "function": "",
+      "risk": 12.333
+    },
+    {
+      "file": "encoder.py",
+      "line": 207,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'iterencode' cyclomatic complexity 11 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 10.4
+    },
+    {
+      "file": "scanner.py",
+      "line": 15,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'py_make_scanner' cyclomatic complexity 22 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 9.243
+    },
+    {
+      "file": "scanner.py",
+      "line": 28,
+      "rule": "deep-nesting",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_scan_once' nests control flow 6 levels deep (max 4)",
+      "why": "each nesting level multiplies the conditions a reader must track; deeply nested code is where inverted-condition bugs live.",
+      "suggestion": "invert conditions to return early, or extract the inner loop",
+      "function": "py_make_scanner",
+      "risk": 9.243
+    },
+    {
+      "file": "scanner.py",
+      "line": 28,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'_scan_once' cyclomatic complexity 22 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "py_make_scanner",
+      "risk": 9.243
+    },
+    {
+      "file": "decoder.py",
+      "line": 70,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'py_scanstring' cyclomatic complexity 13 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 9.087
+    },
+    {
+      "file": "decoder.py",
+      "line": 221,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'JSONArray' cyclomatic complexity 12 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 8.763
+    },
+    {
+      "file": "__init__.py",
+      "line": 248,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'detect_encoding' cyclomatic complexity 13 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 8.383
+    },
+    {
+      "file": "__init__.py",
+      "line": 304,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'loads' cyclomatic complexity 12 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 8.084
+    },
+    {
+      "file": "__init__.py",
+      "line": 304,
+      "rule": "long-function",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'loads' is 62 lines (max 60)",
+      "why": "a function longer than a screen cannot be diffed or reviewed as a unit, so changes to it are approved without being understood.",
+      "suggestion": "split it along its comment headings into separate functions",
+      "function": "",
+      "risk": 8.084
+    },
+    {
+      "file": "tool.py",
+      "line": 44,
+      "rule": "high-complexity",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'main' cyclomatic complexity 11 (max 10)",
+      "why": "cyclomatic complexity is the number of independent paths; past ~10 the function cannot be covered by tests or held in a reviewer's head.",
+      "suggestion": "extract the branch bodies into named helpers and use early returns",
+      "function": "",
+      "risk": 6.4
+    },
+    {
+      "file": "tool.py",
+      "line": 44,
+      "rule": "long-function",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'main' is 72 lines (max 60)",
+      "why": "a function longer than a screen cannot be diffed or reviewed as a unit, so changes to it are approved without being understood.",
+      "suggestion": "split it along its comment headings into separate functions",
+      "function": "",
+      "risk": 6.4
+    },
+    {
+      "file": "encoder.py",
+      "line": 265,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'_make_iterencode' takes 20 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 6.0
+    },
+    {
+      "file": "encoder.py",
+      "line": 267,
+      "rule": "todo-marker",
+      "severity": "low",
+      "category": "maintainability",
+      "message": "## HACK: hand-optimized bytecode; turn globals into locals",
+      "why": "a TODO in code is an issue nobody is tracking and nobody is assigned.",
+      "suggestion": "file an issue and link it, or delete the note",
+      "function": "",
+      "risk": 6.0
+    },
+    {
+      "file": "__init__.py",
+      "line": 120,
+      "rule": "long-function",
+      "severity": "medium",
+      "category": "complexity",
+      "message": "'dump' is 63 lines (max 60)",
+      "why": "a function longer than a screen cannot be diffed or reviewed as a unit, so changes to it are approved without being understood.",
+      "suggestion": "split it along its comment headings into separate functions",
+      "function": "",
+      "risk": 5.988
+    },
+    {
+      "file": "decoder.py",
+      "line": 137,
+      "rule": "missing-docstring",
+      "severity": "low",
+      "category": "maintainability",
+      "message": "public function 'JSONObject' lacks a docstring",
+      "why": "public API without a docstring forces every caller to read the implementation, and makes intent-vs-behaviour bugs unprovable.",
+      "suggestion": "document what it returns and which errors it raises",
+      "function": "",
+      "risk": 4.111
+    },
+    {
+      "file": "decoder.py",
+      "line": 137,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'JSONObject' takes 8 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 4.111
+    },
+    {
+      "file": "scanner.py",
+      "line": 15,
+      "rule": "missing-docstring",
+      "severity": "low",
+      "category": "maintainability",
+      "message": "public function 'py_make_scanner' lacks a docstring",
+      "why": "public API without a docstring forces every caller to read the implementation, and makes intent-vs-behaviour bugs unprovable.",
+      "suggestion": "document what it returns and which errors it raises",
+      "function": "",
+      "risk": 3.081
+    },
+    {
+      "file": "decoder.py",
+      "line": 221,
+      "rule": "missing-docstring",
+      "severity": "low",
+      "category": "maintainability",
+      "message": "public function 'JSONArray' lacks a docstring",
+      "why": "public API without a docstring forces every caller to read the implementation, and makes intent-vs-behaviour bugs unprovable.",
+      "suggestion": "document what it returns and which errors it raises",
+      "function": "",
+      "risk": 2.921
+    },
+    {
+      "file": "__init__.py",
+      "line": 248,
+      "rule": "missing-docstring",
+      "severity": "low",
+      "category": "maintainability",
+      "message": "public function 'detect_encoding' lacks a docstring",
+      "why": "public API without a docstring forces every caller to read the implementation, and makes intent-vs-behaviour bugs unprovable.",
+      "suggestion": "document what it returns and which errors it raises",
+      "function": "",
+      "risk": 2.794
+    },
+    {
+      "file": "__init__.py",
+      "line": 304,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'loads' takes 7 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 2.695
+    },
+    {
+      "file": "encoder.py",
+      "line": 105,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'__init__' takes 9 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 2.533
+    },
+    {
+      "file": "tool.py",
+      "line": 44,
+      "rule": "missing-docstring",
+      "severity": "low",
+      "category": "maintainability",
+      "message": "public function 'main' lacks a docstring",
+      "why": "public API without a docstring forces every caller to read the implementation, and makes intent-vs-behaviour bugs unprovable.",
+      "suggestion": "document what it returns and which errors it raises",
+      "function": "",
+      "risk": 2.133
+    },
+    {
+      "file": "decoder.py",
+      "line": 292,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'__init__' takes 7 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 2.055
+    },
+    {
+      "file": "__init__.py",
+      "line": 120,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'dump' takes 11 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 1.996
+    },
+    {
+      "file": "__init__.py",
+      "line": 185,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'dumps' takes 10 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 1.896
+    },
+    {
+      "file": "__init__.py",
+      "line": 278,
+      "rule": "too-many-params",
+      "severity": "low",
+      "category": "complexity",
+      "message": "'load' takes 7 parameters (max 6)",
+      "why": "long parameter lists are positional-argument bugs waiting to happen and signal that the function owns several responsibilities.",
+      "suggestion": "group the related ones into a dataclass or config object",
+      "function": "",
+      "risk": 1.597
+    }
+  ],
+  "file_risk": [
+    {
+      "file": "encoder.py",
+      "risk": 204.93,
+      "findings": 14
+    },
+    {
+      "file": "decoder.py",
+      "risk": 55.71,
+      "findings": 8
+    },
+    {
+      "file": "__init__.py",
+      "risk": 41.52,
+      "findings": 9
+    },
+    {
+      "file": "tool.py",
+      "risk": 40.53,
+      "findings": 5
+    },
+    {
+      "file": "scanner.py",
+      "risk": 30.81,
+      "findings": 4
+    }
+  ],
+  "duplicates": [],
+  "metrics": {
+    "__init__.py": {
+      "file": "__init__.py",
+      "loc": 365,
+      "sloc": 292,
+      "classes": 0,
+      "coupling": 1,
+      "imports": [
+        "codecs"
+      ],
+      "max_complexity": 13,
+      "avg_complexity": 7.0,
+      "doc_coverage": 0.8,
+      "functions": [
+        {
+          "file": "__init__.py",
+          "name": "dump",
+          "line": 120,
+          "end_line": 182,
+          "complexity": 5,
+          "nesting": 2,
+          "length": 63,
+          "params": 11,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "__init__.py",
+          "name": "dumps",
+          "line": 185,
+          "end_line": 242,
+          "complexity": 4,
+          "nesting": 1,
+          "length": 58,
+          "params": 10,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "__init__.py",
+          "name": "detect_encoding",
+          "line": 248,
+          "end_line": 275,
+          "complexity": 13,
+          "nesting": 3,
+          "length": 28,
+          "params": 1,
+          "has_docstring": false,
+          "is_public": true
+        },
+        {
+          "file": "__init__.py",
+          "name": "load",
+          "line": 278,
+          "end_line": 301,
+          "complexity": 1,
+          "nesting": 0,
+          "length": 24,
+          "params": 7,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "__init__.py",
+          "name": "loads",
+          "line": 304,
+          "end_line": 365,
+          "complexity": 12,
+          "nesting": 2,
+          "length": 62,
+          "params": 7,
+          "has_docstring": true,
+          "is_public": true
+        }
+      ],
+      "parse_ok": true
+    },
+    "__main__.py": {
+      "file": "__main__.py",
+      "loc": 20,
+      "sloc": 15,
+      "classes": 0,
+      "coupling": 1,
+      "imports": [
+        "json"
+      ],
+      "max_complexity": 0,
+      "avg_complexity": 0.0,
+      "doc_coverage": 1.0,
+      "functions": [],
+      "parse_ok": true
+    },
+    "decoder.py": {
+      "file": "decoder.py",
+      "loc": 364,
+      "sloc": 305,
+      "classes": 2,
+      "coupling": 3,
+      "imports": [
+        "_json",
+        "json",
+        "re"
+      ],
+      "max_complexity": 23,
+      "avg_complexity": 6.78,
+      "doc_coverage": 0.6,
+      "functions": [
+        {
+          "file": "decoder.py",
+          "name": "__init__",
+          "line": 31,
+          "end_line": 40,
+          "complexity": 1,
+          "nesting": 0,
+          "length": 10,
+          "params": 4,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "decoder.py",
+          "name": "__reduce__",
+          "line": 42,
+          "end_line": 43,
+          "complexity": 1,
+          "nesting": 0,
+          "length": 2,
+          "params": 1,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "decoder.py",
+          "name": "_decode_uXXXX",
+          "line": 60,
+          "end_line": 68,
+          "complexity": 3,
+          "nesting": 2,
+          "length": 9,
+          "params": 3,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "decoder.py",
+          "name": "py_scanstring",
+          "line": 70,
+          "end_line": 127,
+          "complexity": 13,
+          "nesting": 4,
+          "length": 58,
+          "params": 5,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "decoder.py",
+          "name": "JSONObject",
+          "line": 137,
+          "end_line": 219,
+          "complexity": 23,
+          "nesting": 4,
+          "length": 83,
+          "params": 8,
+          "has_docstring": false,
+          "is_public": true
+        },
+        {
+          "file": "decoder.py",
+          "name": "JSONArray",
+          "line": 221,
+          "end_line": 259,
+          "complexity": 12,
+          "nesting": 4,
+          "length": 39,
+          "params": 4,
+          "has_docstring": false,
+          "is_public": true
+        },
+        {
+          "file": "decoder.py",
+          "name": "__init__",
+          "line": 292,
+          "end_line": 337,
+          "complexity": 4,
+          "nesting": 0,
+          "length": 46,
+          "params": 7,
+          "has_docstring": true,
+          "is_public": false
+        },
+        {
+          "file": "decoder.py",
+          "name": "decode",
+          "line": 340,
+          "end_line": 349,
+          "complexity": 2,
+          "nesting": 1,
+          "length": 10,
+          "params": 3,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "decoder.py",
+          "name": "raw_decode",
+          "line": 351,
+          "end_line": 364,
+          "complexity": 2,
+          "nesting": 1,
+          "length": 14,
+          "params": 3,
+          "has_docstring": true,
+          "is_public": true
+        }
+      ],
+      "parse_ok": true
+    },
+    "encoder.py": {
+      "file": "encoder.py",
+      "loc": 461,
+      "sloc": 389,
+      "classes": 1,
+      "coupling": 2,
+      "imports": [
+        "_json",
+        "re"
+      ],
+      "max_complexity": 60,
+      "avg_complexity": 11.92,
+      "doc_coverage": 0.625,
+      "functions": [
+        {
+          "file": "encoder.py",
+          "name": "py_encode_basestring",
+          "line": 37,
+          "end_line": 43,
+          "complexity": 1,
+          "nesting": 0,
+          "length": 7,
+          "params": 1,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "replace",
+          "line": 41,
+          "end_line": 42,
+          "complexity": 1,
+          "nesting": 0,
+          "length": 2,
+          "params": 1,
+          "has_docstring": false,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "py_encode_basestring_ascii",
+          "line": 49,
+          "end_line": 68,
+          "complexity": 3,
+          "nesting": 0,
+          "length": 20,
+          "params": 1,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "replace",
+          "line": 53,
+          "end_line": 67,
+          "complexity": 3,
+          "nesting": 2,
+          "length": 15,
+          "params": 1,
+          "has_docstring": false,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "__init__",
+          "line": 105,
+          "end_line": 161,
+          "complexity": 4,
+          "nesting": 2,
+          "length": 57,
+          "params": 9,
+          "has_docstring": true,
+          "is_public": false
+        },
+        {
+          "file": "encoder.py",
+          "name": "default",
+          "line": 163,
+          "end_line": 183,
+          "complexity": 1,
+          "nesting": 0,
+          "length": 21,
+          "params": 2,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "encode",
+          "line": 185,
+          "end_line": 205,
+          "complexity": 4,
+          "nesting": 2,
+          "length": 21,
+          "params": 2,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "iterencode",
+          "line": 207,
+          "end_line": 263,
+          "complexity": 11,
+          "nesting": 1,
+          "length": 57,
+          "params": 3,
+          "has_docstring": true,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "floatstr",
+          "line": 226,
+          "end_line": 246,
+          "complexity": 5,
+          "nesting": 3,
+          "length": 21,
+          "params": 5,
+          "has_docstring": false,
+          "is_public": true
+        },
+        {
+          "file": "encoder.py",
+          "name": "_make_iterencode",
+          "line": 265,
+          "end_line": 461,
+          "complexity": 60,
+          "nesting": 0,
+          "length": 197,
+          "params": 20,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "encoder.py",
+          "name": "_iterencode_list",
+          "line": 280,
+          "end_line": 337,
+          "complexity": 19,
+          "nesting": 10,
+          "length": 58,
+          "params": 2,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "encoder.py",
+          "name": "_iterencode_dict",
+          "line": 339,
+          "end_line": 424,
+          "complexity": 29,
+          "nesting": 10,
+          "length": 86,
+          "params": 2,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "encoder.py",
+          "name": "_iterencode",
+          "line": 426,
+          "end_line": 460,
+          "complexity": 14,
+          "nesting": 10,
+          "length": 35,
+          "params": 2,
+          "has_docstring": false,
+          "is_public": false
+        }
+      ],
+      "parse_ok": true
+    },
+    "scanner.py": {
+      "file": "scanner.py",
+      "loc": 73,
+      "sloc": 64,
+      "classes": 0,
+      "coupling": 2,
+      "imports": [
+        "_json",
+        "re"
+      ],
+      "max_complexity": 22,
+      "avg_complexity": 15.0,
+      "doc_coverage": 0.0,
+      "functions": [
+        {
+          "file": "scanner.py",
+          "name": "py_make_scanner",
+          "line": 15,
+          "end_line": 71,
+          "complexity": 22,
+          "nesting": 0,
+          "length": 57,
+          "params": 1,
+          "has_docstring": false,
+          "is_public": true
+        },
+        {
+          "file": "scanner.py",
+          "name": "_scan_once",
+          "line": 28,
+          "end_line": 63,
+          "complexity": 22,
+          "nesting": 6,
+          "length": 36,
+          "params": 2,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "scanner.py",
+          "name": "scan_once",
+          "line": 65,
+          "end_line": 69,
+          "complexity": 1,
+          "nesting": 1,
+          "length": 5,
+          "params": 2,
+          "has_docstring": false,
+          "is_public": true
+        }
+      ],
+      "parse_ok": true
+    },
+    "tool.py": {
+      "file": "tool.py",
+      "loc": 122,
+      "sloc": 104,
+      "classes": 0,
+      "coupling": 5,
+      "imports": [
+        "_colorize",
+        "argparse",
+        "json",
+        "re",
+        "sys"
+      ],
+      "max_complexity": 11,
+      "avg_complexity": 5.67,
+      "doc_coverage": 0.0,
+      "functions": [
+        {
+          "file": "tool.py",
+          "name": "_colorize_json",
+          "line": 34,
+          "end_line": 41,
+          "complexity": 3,
+          "nesting": 0,
+          "length": 8,
+          "params": 2,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "tool.py",
+          "name": "_replace_match_callback",
+          "line": 35,
+          "end_line": 39,
+          "complexity": 3,
+          "nesting": 2,
+          "length": 5,
+          "params": 1,
+          "has_docstring": false,
+          "is_public": false
+        },
+        {
+          "file": "tool.py",
+          "name": "main",
+          "line": 44,
+          "end_line": 115,
+          "complexity": 11,
+          "nesting": 4,
+          "length": 72,
+          "params": 0,
+          "has_docstring": false,
+          "is_public": true
+        }
+      ],
+      "parse_ok": true
+    }
+  },
+  "trace": "=== Agent trace: code-review-agent (11 steps) ===\n[1] list_files {}\n    thought: Start by establishing the review scope.\n    -> 6 python files:\n__init__.py\n__main__.py\ndecoder.py\nencoder.py\nscanner.py\ntool.py\n[2] analyze_file {\"path\": \"__init__.py\"}\n    thought: 6 file(s) still unreviewed; take '__init__.py' next.\n    -> __init__.py: 9 findings (medium=4, low=5); sloc=292 funcs=5 max_cc=13 coupling=1\n[3] analyze_file {\"path\": \"__main__.py\"}\n    thought: 5 file(s) still unreviewed; take '__main__.py' next.\n    -> __main__.py: 0 findings; sloc=15 funcs=0 max_cc=0 coupling=1\n[4] analyze_file {\"path\": \"decoder.py\"}\n    thought: 4 file(s) still unreviewed; take 'decoder.py' next.\n    -> decoder.py: 8 findings (medium=4, low=4); sloc=305 funcs=9 max_cc=23 coupling=3\n[5] analyze_file {\"path\": \"encoder.py\"}\n    thought: 3 file(s) still unreviewed; take 'encoder.py' next.\n    -> encoder.py: 14 findings (medium=11, low=3); sloc=389 funcs=13 max_cc=60 coupling=2\n[6] analyze_file {\"path\": \"scanner.py\"}\n    thought: 2 file(s) still unreviewed; take 'scanner.py' next.\n    -> scanner.py: 4 findings (medium=3, low=1); sloc=64 funcs=3 max_cc=22 coupling=2\n[7] analyze_file {\"path\": \"tool.py\"}\n    thought: 1 file(s) still unreviewed; take 'tool.py' next.\n    -> tool.py: 5 findings (high=2, medium=2, low=1); sloc=104 funcs=3 max_cc=11 coupling=5\n[8] duplicate_scan {}\n    thought: Every file is parsed, so clone detection can now compare all of them at once.\n    -> no duplicate blocks above the similarity threshold\n[9] complexity_report {\"top\": 5}\n    thought: Inspect the complexity hot spots that drive risk ranking.\n    -> worst functions:\nencoder.py:265 _make_iterencode cc=60 nesting=0 len=197 params=20\nencoder.py:339 _iterencode_dict cc=29 nesting=10 len=86 params=2\ndecoder.py:137 JSONObject cc=23 nesting=4 len=83 params=8\nscanner.py:15 py_make_scanner cc=22 nesting=0 len=57 params=1\nscanner.py:28 _scan_once cc=22 n\n[10] search_pattern {\"pattern\": \"(?i)\\\\w*(?:secret|api[_-]?key|password|passwd|token)\\\\w*\\\\s*[:=]\\\\s*[\\\\\\\"']?[A-Za-z0-9+/_\\\\-]{12,}\", \"inclu\n    thought: AST passes only see Python; search config files for credentials they cannot reach.\n    -> 0 matches\n[11] finish {\"answer\": \"reviewed 6 files, 40 findings\"}\n    thought: Scope covered: 40 findings across 6 files.\n    -> reviewed 6 files, 40 findings"
+}

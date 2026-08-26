@@ -1,0 +1,13 @@
+{
+  "name": "codesentry",
+  "category": "Agentic",
+  "architecture": "forward-chaining rule engine + rule packs + multi-format reporters",
+  "interface": "pre-commit hook + python -m reviewer",
+  "testing": "mutation / planted-defect",
+  "demo_cmd": "python -m reviewer demo",
+  "test_cmd": "python -m pytest tests -q",
+  "entry_points": [
+    "reviewer/__main__.py",
+    ".pre-commit-hooks.yaml"
+  ]
+}
