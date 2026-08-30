@@ -9,16 +9,25 @@ from __future__ import annotations
 
 import ast
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dc_field
 
-from .analyzers import (SEVERITY_ORDER, SEVERITY_WEIGHT, AnalyzerConfig, Finding,
-                        RuleSpec, RULES, analyze_source)
+from .analyzers import (CATEGORIES, SEVERITY_ORDER, SEVERITY_WEIGHT, AnalyzerConfig,
+                        Finding, RuleSpec, RULES, analyze_source)
+from .cache import AnalysisCache
 from .churn import ChurnModel, build_churn
 from .diffing import DiffStat, filter_findings, iter_python_files
 from .duplication import CodeBlock, duplicate_findings, extract_blocks, find_duplicates
+from .errors import AnalysisError, InputError, ToolInputError
+from .logging_setup import get_logger
 from .metrics import ModuleMetrics, module_metrics
+from .suppression import Suppressions
+from .textscan import search_text_files
 
 GRADES = ((90.0, "A"), (80.0, "B"), (70.0, "C"), (60.0, "D"), (0.0, "F"))
+SECRET_SCAN_RE = (r"(?i)\w*(?:secret|api[_-]?key|password|passwd|token)\w*"
+                  r"\s*[:=]\s*[\"']?[A-Za-z0-9+/_\-]{12,}")
+
+log = get_logger("review")
 
 
 @dataclass
@@ -48,6 +57,14 @@ class ReviewResult:
     trace: str = ""
     diff_stat: DiffStat | None = None
     mode: str = "full"
+    errors: list[AnalysisError] = dc_field(default_factory=list)
+    suppressed: dict = dc_field(default_factory=dict)
+    cache_stats: dict = dc_field(default_factory=dict)
+
+    @property
+    def ok(self) -> bool:
+        """False when any file failed to analyze, whatever the findings say."""
+        return not self.errors
 
     @property
     def by_severity(self) -> dict[str, int]:
@@ -90,12 +107,16 @@ class ReviewResult:
         return {
             "root": self.root,
             "mode": self.mode,
+            "ok": self.ok,
+            "errors": [e.to_dict() for e in self.errors],
             "summary": {
                 "files_reviewed": len(self.metrics),
                 "sloc": self.total_sloc,
                 "findings": len(self.findings),
                 "by_severity": self.by_severity,
                 "by_category": self.by_category,
+                "suppressed": self.suppressed,
+                "cache": self.cache_stats,
             },
             "health": self.health.to_dict(),
             "churn": self.churn.to_dict(),
@@ -113,29 +134,66 @@ class ReviewSession:
     """Loads sources, runs analyzer passes on demand, and accumulates findings."""
 
     def __init__(self, root: str, config: AnalyzerConfig | None = None,
-                 files: list[str] | None = None):
+                 files: list[str] | None = None,
+                 suppressions: Suppressions | None = None,
+                 cache: AnalysisCache | None = None):
         self.root = os.path.abspath(root)
         self.config = config or AnalyzerConfig()
         self.files: list[str] = files if files is not None else iter_python_files(self.root)
+        self.suppressions = suppressions or Suppressions()
+        self.cache = cache
         self.sources: dict[str, str] = {}
         self.trees: dict[str, ast.Module] = {}
         self.metrics: dict[str, ModuleMetrics] = {}
         self.findings: list[Finding] = []
+        self.errors: list[AnalysisError] = []
         self.analyzed: set[str] = set()
         self.duplicate_pairs: list = []
+        self.cache_hits = 0
+        self.cache_misses = 0
+        self._blocks: dict[str, list[CodeBlock]] = {}
         self._seen: set[tuple[str, int, str]] = set()
 
     # -- loading -----------------------------------------------------------
     def abspath(self, rel: str) -> str:
-        """Absolute on-disk path for a repo-relative path."""
-        return os.path.join(self.root, rel.replace("/", os.sep))
+        """Absolute on-disk path for a repo-relative path, contained under root.
+
+        Every path that reaches this method has at some point come from a diff
+        header, a config file, a CLI argument or an LLM tool call, so the
+        containment check is not theoretical: without it `../../` escapes the
+        review root and the tool reads files nobody asked it to.
+        """
+        if os.path.isabs(rel) or (len(rel) > 1 and rel[1] == ":"):
+            raise InputError("path must be relative to the review root", path=rel)
+        target = os.path.normpath(os.path.join(self.root, rel.replace("/", os.sep)))
+        try:
+            contained = os.path.commonpath([self.root, target]) == self.root
+        except ValueError:  # different drives on Windows
+            contained = False
+        if not contained:
+            raise InputError("path escapes the review root", path=rel, root=self.root)
+        return target
 
     def source(self, rel: str) -> str:
-        """Read (and cache) one file's text."""
+        """Read (and cache in memory) one file's text."""
         if rel not in self.sources:
-            with open(self.abspath(rel), "r", encoding="utf-8", errors="replace") as fh:
-                self.sources[rel] = fh.read()
+            path = self.abspath(rel)
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                    self.sources[rel] = fh.read()
+            except OSError as exc:
+                raise InputError(f"cannot read file: {exc}", path=rel) from exc
         return self.sources[rel]
+
+    def release(self, rel: str) -> None:
+        """Drop one file's source and AST once nothing else needs them.
+
+        A repo-scale run used to hold every source string and every AST for the
+        whole run; clone detection is the only cross-file consumer, so once it
+        has run the per-file state is dead weight.
+        """
+        self.sources.pop(rel, None)
+        self.trees.pop(rel, None)
 
     def tree(self, rel: str) -> ast.Module | None:
         """Parsed module, or None when the file does not compile."""
@@ -158,27 +216,66 @@ class ReviewSession:
         return True
 
     def analyze_file(self, rel: str) -> list[Finding]:
-        """Run all four passes on one file (idempotent) and return its findings."""
+        """Run all four passes on one file (idempotent) and return its findings.
+
+        An analyzer bug is recorded as an AnalysisError and re-raised. Callers
+        that must keep going (the batch walk, the agent loop) catch it, but the
+        error stays in `self.errors` and forces a non-zero exit, because a
+        linter reporting "no findings" after a crash is the worst possible
+        failure mode.
+        """
         if rel in self.analyzed:
             return [f for f in self.findings if f.file == rel]
         self.analyzed.add(rel)
         source = self.source(rel)
+        self.suppressions.register(rel, source)
+        cached = self.cache.get_full(rel, source) if self.cache is not None else None
+        if cached is not None:
+            self.cache_hits += 1
+            produced, self.metrics[rel], self._blocks[rel] = cached
+            for finding in produced:
+                self.add(finding)
+            return produced
+        self.cache_misses += 1
         tree = self.tree(rel)
-        self.metrics[rel] = module_metrics(rel, source, tree)
-        produced = analyze_source(rel, source, self.config, tree)
+        try:
+            metrics = module_metrics(rel, source, tree)
+            produced = analyze_source(rel, source, self.config, tree)
+            self._blocks[rel] = extract_blocks(rel, tree) if tree is not None else []
+        except Exception as exc:
+            error = AnalysisError(f"{type(exc).__name__}: {exc}", file=rel)
+            self.errors.append(error)
+            log.error("analyzer failed", extra={"file": rel,
+                                                "reason": type(exc).__name__})
+            raise error from exc
+        self.metrics[rel] = metrics
+        if self.cache is not None:
+            self.cache.put(rel, source, produced, metrics, self._blocks[rel])
         for finding in produced:
             self.add(finding)
         return produced
 
     def analyze_all(self) -> None:
-        """Analyze every discovered file."""
+        """Analyze every discovered file, continuing past per-file failures."""
         for rel in self.files:
-            self.analyze_file(rel)
+            try:
+                self.analyze_file(rel)
+            except AnalysisError:
+                continue  # already recorded in self.errors; the run exits non-zero
+            except InputError as exc:
+                self.errors.append(AnalysisError(exc.message, file=rel))
 
     def blocks(self) -> list[CodeBlock]:
-        """Structural token blocks for every parsed file (duplicate detection input)."""
+        """Structural token blocks for every analyzed file (clone detection input).
+
+        Token streams are cached alongside findings, so a warm run never reparses
+        a file just to compare its shape against the rest of the repository.
+        """
         out: list[CodeBlock] = []
         for rel in self.files:
+            if rel in self._blocks:
+                out.extend(self._blocks[rel])
+                continue
             tree = self.tree(rel)
             if tree is not None:
                 out.extend(extract_blocks(rel, tree))
@@ -193,21 +290,58 @@ class ReviewSession:
                 added += 1
         return added
 
-    def record(self, file: str, line: int, rule: str, message: str,
+    def record(self, file: str, line: int | str, rule: str, message: str,
                suggestion: str, severity: str = "", category: str = "",
                why: str = "") -> bool:
-        """Record a finding the agent derived itself (e.g. from a text search).
+        """Record a finding derived outside the AST passes (e.g. a text search).
 
-        Known rules inherit their policy from `RULES`; ad-hoc rules must carry
-        their own severity so nothing is ever reported without a severity.
+        Every argument here can come from `record_finding`, which under
+        `--planner llm` is called with model-generated values. It is therefore
+        validated, not trusted: the path must stay inside the review root, the
+        line must be an integer, and severity/category must be in vocabulary.
+        Out-of-vocabulary values used to pass through and then raise KeyError
+        inside the risk model, killing the run after the agent loop had already
+        returned.
         """
+        rule = str(rule).strip()
+        if not rule or len(rule) > 64:
+            raise ToolInputError("rule id must be 1-64 characters", rule=rule[:80])
+        rel = str(file).replace("\\", "/").strip()
+        self.abspath(rel)  # containment check; raises InputError on escape
+        try:
+            lineno = int(line)
+        except (TypeError, ValueError) as exc:
+            raise ToolInputError("line must be an integer", line=repr(line)) from exc
         spec: RuleSpec | None = RULES.get(rule)
-        sev = severity or (spec.severity if spec else "medium")
-        cat = category or (spec.category if spec else "security")
+        sev = (severity or (spec.severity if spec else "medium")).strip().lower()
+        cat = (category or (spec.category if spec else "security")).strip().lower()
+        if sev not in SEVERITY_ORDER:
+            raise ToolInputError("unknown severity", severity=sev,
+                                 expected=",".join(SEVERITY_ORDER))
+        if cat not in CATEGORIES:
+            raise ToolInputError("unknown category", category=cat,
+                                 expected=",".join(CATEGORIES))
         reason = why or (spec.why if spec else "")
-        return self.add(Finding(file=file, line=int(line), rule=rule, severity=sev,
-                                message=message, suggestion=suggestion,
-                                category=cat, why=reason))
+        return self.add(Finding(file=rel, line=max(1, lineno), rule=rule,
+                                severity=sev, message=str(message)[:500],
+                                suggestion=str(suggestion)[:500],
+                                category=cat, why=str(reason)[:1000]))
+
+    def scan_secrets(self, pattern: str = SECRET_SCAN_RE, max_hits: int = 40) -> int:
+        """Search non-Python files for credential assignments; returns hits recorded.
+
+        This is the one capability no AST pass can provide, and it is a plain
+        function call rather than something only the agent can reach.
+        """
+        recorded = 0
+        for hit in search_text_files(self.root, pattern, max_hits=max_hits):
+            key = hit.text.split("=")[0].split(":")[0].strip() or "credential"
+            if self.record(hit.file, hit.line, "hardcoded-secret",
+                           f"configuration key '{key[:60]}' holds a literal credential",
+                           "move the value to a secret manager, reference it by "
+                           "name, and rotate it"):
+                recorded += 1
+        return recorded
 
     # -- scoring -----------------------------------------------------------
     def _rank(self, findings: list[Finding], churn: ChurnModel) -> list[Finding]:
@@ -254,9 +388,9 @@ class ReviewSession:
     def finalize(self, trace: str = "", changed: dict[str, set[int]] | None = None,
                  diff_stat: DiffStat | None = None, scope: str = "line",
                  context: int = 0) -> ReviewResult:
-        """Rank, optionally diff-filter, score health and package the result."""
+        """Suppress, rank, optionally diff-filter, score health and package."""
         churn = build_churn(self.root, self.metrics, changed)
-        findings = list(self.findings)
+        findings = self.suppressions.apply(list(self.findings))
         mode = "full"
         if changed is not None:
             findings = filter_findings(findings, changed, self.metrics, scope, context)
@@ -265,4 +399,7 @@ class ReviewSession:
         return ReviewResult(root=self.root, findings=ranked, metrics=dict(self.metrics),
                             health=self.health(ranked), churn=churn,
                             duplicate_pairs=list(self.duplicate_pairs), trace=trace,
-                            diff_stat=diff_stat, mode=mode)
+                            diff_stat=diff_stat, mode=mode, errors=list(self.errors),
+                            suppressed=self.suppressions.to_dict(),
+                            cache_stats={"hits": self.cache_hits,
+                                         "misses": self.cache_misses})
