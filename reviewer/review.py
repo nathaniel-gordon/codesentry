@@ -30,6 +30,15 @@ from .errors import AnalysisError, InputError, ToolInputError
 from .logging_setup import current_run_id, get_logger
 from .metrics import ModuleMetrics, module_metrics
 from .suppression import Suppressions
+from .telemetry import (
+    ANALYZER_ERRORS,
+    CACHE_EVENTS,
+    FILE_DURATION,
+    FILES_ANALYZED,
+    FINDINGS,
+    REGISTRY,
+    SUPPRESSED,
+)
 from .textscan import search_text_files
 
 GRADES = ((90.0, "A"), (80.0, "B"), (70.0, "C"), (60.0, "D"), (0.0, "F"))
@@ -247,19 +256,25 @@ class ReviewSession:
         cached = self.cache.get_full(rel, source) if self.cache is not None else None
         if cached is not None:
             self.cache_hits += 1
+            REGISTRY.inc(CACHE_EVENTS, result="hit")
+            REGISTRY.inc(FILES_ANALYZED, source="cache")
             produced, self.metrics[rel], self._blocks[rel] = cached
             for finding in produced:
                 self.add(finding)
             return produced
         self.cache_misses += 1
+        REGISTRY.inc(CACHE_EVENTS, result="miss" if self.cache is not None else "off")
+        REGISTRY.inc(FILES_ANALYZED, source="parsed")
         tree = self.tree(rel)
         try:
-            metrics = module_metrics(rel, source, tree)
-            produced = analyze_source(rel, source, self.config, tree)
-            self._blocks[rel] = extract_blocks(rel, tree) if tree is not None else []
+            with REGISTRY.timed(FILE_DURATION):
+                metrics = module_metrics(rel, source, tree)
+                produced = analyze_source(rel, source, self.config, tree)
+                self._blocks[rel] = extract_blocks(rel, tree) if tree is not None else []
         except Exception as exc:
             error = AnalysisError(f"{type(exc).__name__}: {exc}", file=rel)
             self.errors.append(error)
+            REGISTRY.inc(ANALYZER_ERRORS, reason=type(exc).__name__)
             log.error("analyzer failed", extra={"file": rel,
                                                 "reason": type(exc).__name__})
             raise error from exc
@@ -411,6 +426,11 @@ class ReviewSession:
             findings = filter_findings(findings, changed, self.metrics, scope, context)
             mode = "diff"
         ranked = self._rank(findings, churn)
+        for finding in ranked:
+            REGISTRY.inc(FINDINGS, severity=finding.severity, category=finding.category)
+        for mechanism, count in self.suppressions.to_dict().items():
+            if isinstance(count, int) and count:
+                REGISTRY.inc(SUPPRESSED, float(count), mechanism=mechanism)
         return ReviewResult(root=self.root, findings=ranked, metrics=dict(self.metrics),
                             health=self.health(ranked), churn=churn,
                             duplicate_pairs=list(self.duplicate_pairs), trace=trace,

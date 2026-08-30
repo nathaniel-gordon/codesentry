@@ -17,6 +17,7 @@ import time
 from .errors import AnalysisError, ToolInputError
 from .logging_setup import get_logger
 from .review import ReviewSession
+from .telemetry import PHASE_DURATION, REGISTRY, RUN_DURATION
 
 log = get_logger("scan")
 
@@ -34,20 +35,24 @@ def analyze_repo(session: ReviewSession, *, duplicates: bool = True,
     started = time.perf_counter()
     log.info("review started", extra={"root": session.root,
                                       "files": len(session.files)})
-    session.analyze_all()
+    with REGISTRY.timed(PHASE_DURATION, phase="analyze"):
+        session.analyze_all()
     pairs = 0
     if duplicates:
-        session.scan_duplicates()
+        with REGISTRY.timed(PHASE_DURATION, phase="duplicates"):
+            session.scan_duplicates()
         pairs = len(session.duplicate_pairs)
     for rel in list(session.sources):
         session.release(rel)
     recorded = 0
     if secrets:
         try:
-            recorded = session.scan_secrets()
+            with REGISTRY.timed(PHASE_DURATION, phase="secrets"):
+                recorded = session.scan_secrets()
         except ToolInputError as exc:
             session.errors.append(AnalysisError(str(exc), file="<secret-scan>"))
     elapsed = (time.perf_counter() - started) * 1000
+    REGISTRY.observe(RUN_DURATION, elapsed)
     log.info("review finished", extra={
         "files": len(session.metrics), "findings": len(session.findings),
         "errors": len(session.errors), "elapsed_ms": round(elapsed, 1),
