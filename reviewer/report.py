@@ -11,17 +11,7 @@ from datetime import datetime, timezone
 
 from .analyzers import SEVERITY_ORDER
 from .review import ReviewResult
-
-SEVERITY_MARK = {"critical": "!!!", "high": "!!", "medium": "!", "low": "."}
-
-
-def _table(headers: list[str], rows: list[list[str]]) -> str:
-    """Render a GitHub-flavoured markdown table."""
-    out = ["| " + " | ".join(headers) + " |",
-           "|" + "|".join("---" for _ in headers) + "|"]
-    for row in rows:
-        out.append("| " + " | ".join(str(c) for c in row) + " |")
-    return "\n".join(out)
+from .tables import markdown_table as _table
 
 
 def render_markdown(result: ReviewResult, title: str = "Code Review",
@@ -36,6 +26,8 @@ def render_markdown(result: ReviewResult, title: str = "Code Review",
         f"- **Generated**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"- **Files reviewed**: {len(result.metrics)}  |  **SLOC**: {result.total_sloc}",
         f"- **Churn signal**: {result.churn.source}",
+        "",
+        f"- **Analysis complete**: {'yes' if result.ok else 'NO - see below'}",
         "",
         f"## Health score: {health.score:.1f}/100 (grade {health.grade})",
         "",
@@ -58,6 +50,20 @@ def render_markdown(result: ReviewResult, title: str = "Code Review",
                [[cat, n] for cat, n in result.by_category.items()]) or "_none_",
         "",
     ]
+    if result.errors:
+        # Loud and near the top: every count below this point is missing
+        # whatever these files contained.
+        lines += ["## Analyzer failures", "",
+                  "These files were **not** analyzed, so the counts above are "
+                  "incomplete and the run exits non-zero.", "",
+                  _table(["file", "error"],
+                         [[f"`{e.file}`", e.message] for e in result.errors]), ""]
+    suppressed = result.suppressed
+    if suppressed.get("by_pragma") or suppressed.get("by_baseline"):
+        lines += ["## Suppressed", "",
+                  f"{suppressed.get('by_pragma', 0)} finding(s) silenced by an "
+                  f"inline pragma, {suppressed.get('by_baseline', 0)} by the "
+                  f"baseline `{suppressed.get('baseline') or '-'}`.", ""]
     if result.diff_stat:
         lines += ["## Diff scope", "",
                   f"{result.diff_stat.files_changed} file(s) changed, "
