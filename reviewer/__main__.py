@@ -280,13 +280,16 @@ def _emit(result: ReviewResult, args: argparse.Namespace, title: str) -> list[st
         return []
     out_dir = args.out or default_output_dir()
     written: list[str] = []
-    if "md" in formats or "json" in formats:
-        md_path, json_path = write_reports(result, out_dir, args.stem, title=title)
-        written += [p for p, fmt in ((md_path, "md"), (json_path, "json"))
-                    if fmt in formats]
-    if "sarif" in formats:
-        written.append(write_sarif(result, os.path.join(out_dir,
-                                                        f"{args.stem}.sarif")))
+    try:
+        if "md" in formats or "json" in formats:
+            md_path, json_path = write_reports(result, out_dir, args.stem, title=title)
+            written += [p for p, fmt in ((md_path, "md"), (json_path, "json"))
+                        if fmt in formats]
+        if "sarif" in formats:
+            written.append(write_sarif(result, os.path.join(out_dir,
+                                                            f"{args.stem}.sarif")))
+    except OSError as exc:
+        raise InputError(f"cannot write the report: {exc}", path=out_dir) from exc
     return written
 
 

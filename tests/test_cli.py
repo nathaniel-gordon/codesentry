@@ -222,3 +222,30 @@ def test_report_records_the_settings_it_ran_with(project, tmp_path):
 def test_log_flags_are_accepted_after_the_subcommand(project, tmp_path):
     assert run("review", str(project / "clean.py"), "--out", str(tmp_path / "r"),
                "--no-cache", "--quiet", "--log-level", "error") == EXIT_OK
+
+
+# -- where reports land when --out is not given ----------------------------
+def test_default_report_dir_follows_the_working_directory(project, tmp_path,
+                                                          monkeypatch):
+    """Anchored on the cwd, not on the package.
+
+    An installed codesentry lives in site-packages, and the previous anchor put
+    `output/` there: wrong on any machine and unwritable for the container's
+    non-root user.
+    """
+    workdir = tmp_path / "work"
+    workdir.mkdir()
+    monkeypatch.chdir(workdir)
+    assert run("review", str(project / "clean.py"), "--no-cache", "--quiet") == EXIT_OK
+    assert (workdir / "output" / "review.json").is_file()
+
+
+def test_unwritable_report_dir_is_a_typed_error_not_a_traceback(project, tmp_path,
+                                                                monkeypatch):
+    def refuse(*_args, **_kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(cli.os, "makedirs", refuse)
+    monkeypatch.chdir(tmp_path)
+    assert run("review", str(project / "clean.py"), "--no-cache", "--quiet") == EXIT_USAGE
+

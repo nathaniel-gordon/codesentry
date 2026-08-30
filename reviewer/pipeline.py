@@ -101,8 +101,16 @@ def review_patch(root: str, diff_path: str, mode: str = "direct",
 
 
 def default_output_dir() -> str:
-    """`output/` next to the project root, created on demand."""
-    out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                       "output")
-    os.makedirs(out, exist_ok=True)
+    """`output/` under the working directory, created on demand.
+
+    Anchored on the caller's cwd rather than on the package, because an
+    installed package lives in site-packages and writing reports there is
+    both wrong and, for a non-root user, impossible.
+    """
+    out = os.path.join(os.getcwd(), "output")
+    try:
+        os.makedirs(out, exist_ok=True)
+    except OSError as exc:
+        raise InputError(f"cannot create the report directory: {exc}",
+                         path=out) from exc
     return out
