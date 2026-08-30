@@ -1,0 +1,42 @@
+# Keep the build context to what the wheel is built from. Everything below is
+# either generated, environment-specific, or not part of the distribution.
+.git
+.github
+.gitignore
+.dockerignore
+Dockerfile
+
+# Generated review artifacts and corpora
+output/
+.codesentry-cache/
+*.sarif
+codesentry-baseline.json
+
+# Tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Environments and packaging leftovers
+.venv/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Not installed by the wheel
+tests/
+docs/
+.env
+.env.example
+.pre-commit-hooks.yaml
+action.yml
+manifest.json
+CONTRIBUTING.md
+SECURITY.md
