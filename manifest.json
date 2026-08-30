@@ -1,13 +1,15 @@
 {
   "name": "codesentry",
-  "category": "Agentic",
-  "architecture": "forward-chaining rule engine + rule packs + multi-format reporters",
-  "interface": "pre-commit hook + python -m reviewer",
-  "testing": "mutation / planted-defect",
+  "category": "Developer tooling / static analysis",
+  "architecture": "layered AST analyzer: rule table + four passes + sqlite result cache + markdown/JSON/SARIF reporters",
+  "interface": "codesentry CLI (8 subcommands) + pre-commit hook + composite GitHub Action",
+  "testing": "planted-defect corpus with an adversarial negative set, plus unit and CLI tests",
   "demo_cmd": "python -m reviewer demo",
+  "eval_cmd": "python -m reviewer eval",
   "test_cmd": "python -m pytest tests -q",
   "entry_points": [
     "reviewer/__main__.py",
-    ".pre-commit-hooks.yaml"
+    ".pre-commit-hooks.yaml",
+    "action.yml"
   ]
 }
