@@ -11,8 +11,7 @@ import pytest
 
 from reviewer.errors import InputError, ToolInputError
 from reviewer.review import ReviewSession
-from reviewer.textscan import (MAX_PATTERN_LEN, iter_text_files, safe_compile,
-                               search_text_files)
+from reviewer.textscan import MAX_PATTERN_LEN, iter_text_files, safe_compile, search_text_files
 
 
 @pytest.fixture

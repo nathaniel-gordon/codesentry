@@ -30,8 +30,14 @@ from .cache import AnalysisCache, clear_cache, default_cache_path
 from .config import Settings, apply_overrides, load_settings
 from .datagen import write_demo_pair
 from .diffing import iter_python_files
-from .errors import (EXIT_GATE_FAILED, EXIT_INTERNAL, EXIT_OK, CodeSentryError,
-                     InputError, UsageError)
+from .errors import (
+    EXIT_GATE_FAILED,
+    EXIT_INTERNAL,
+    EXIT_OK,
+    CodeSentryError,
+    InputError,
+    UsageError,
+)
 from .evaluation import evaluate, rule_scores
 from .logging_setup import configure_logging, current_run_id, get_logger
 from .pipeline import default_output_dir, review_diff, review_patch, review_repo

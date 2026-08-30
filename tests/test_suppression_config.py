@@ -8,11 +8,9 @@ from __future__ import annotations
 import pytest
 
 from reviewer.analyzers import PACKS, RULES, AnalyzerConfig, analyze_source
-from reviewer.config import (apply_overrides, find_config, load_settings,
-                             resolve_skip_rules)
+from reviewer.config import apply_overrides, find_config, load_settings, resolve_skip_rules
 from reviewer.errors import ConfigError, UsageError
-from reviewer.suppression import (Baseline, Suppressions, parse_pragmas,
-                                  unknown_pragma_rules)
+from reviewer.suppression import Baseline, Suppressions, parse_pragmas, unknown_pragma_rules
 
 HEADER = '"""Module."""\n\n\n'
 BODY = 'def run(text):\n    """Run."""\n    return eval(text)\n'
@@ -184,7 +182,7 @@ def test_no_config_flag_ignores_the_file(tmp_path):
 
 
 def test_config_is_found_from_a_subdirectory(tmp_path):
-    root = _write(tmp_path, "[tool.codesentry]\nmax-complexity = 3\n")
+    _write(tmp_path, "[tool.codesentry]\nmax-complexity = 3\n")
     nested = tmp_path / "pkg" / "sub"
     nested.mkdir(parents=True)
     assert find_config(str(nested)) == str(tmp_path / "pyproject.toml")

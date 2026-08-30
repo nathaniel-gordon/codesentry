@@ -153,7 +153,7 @@ def load_settings(root: str, *, use_config: bool = True) -> Settings:
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             raise ConfigError(f"'{toml_key}' must be a positive integer", path=path,
                               value=repr(value))
-        analyzer = replace(analyzer, **{field_name: value})
+        analyzer = replace(analyzer, **{field_name: value})  # type: ignore[arg-type]
     packs = _str_list(section, "packs", path) or tuple(PACKS)
     select = frozenset(_str_list(section, "select", path) or ())
     ignore = frozenset(_str_list(section, "ignore", path) or ())
@@ -197,7 +197,7 @@ def apply_overrides(settings: Settings, *, thresholds: dict[str, int | None],
             raise UsageError(f"--{name.replace('_', '-')} must be at least 1",
                              value=value)
     if given:
-        analyzer = replace(analyzer, **given)
+        analyzer = replace(analyzer, **given)  # type: ignore[arg-type]
     if packs is not None or select or ignore:
         chosen = packs if packs is not None else settings.packs
         analyzer = replace(analyzer, skip_rules=resolve_skip_rules(

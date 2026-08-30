@@ -6,6 +6,7 @@ back to the deterministic policy, so nothing here is on the default path.
 from __future__ import annotations
 
 import os
+from typing import Any
 
 DEFAULT_MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5")
 
@@ -31,7 +32,7 @@ class ClaudeLLM:
 
     def complete(self, prompt: str, system: str = "") -> str:
         """Single-turn completion. Returns plain text ('' on safety refusal)."""
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "model": self.model,
             "max_tokens": self.max_tokens,
             "messages": [{"role": "user", "content": prompt}],

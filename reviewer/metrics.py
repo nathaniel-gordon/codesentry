@@ -88,15 +88,14 @@ class ModuleMetrics:
                 best = max(best, fn.complexity)
         if best:
             return best
-        return int(round(self.avg_complexity))
+        return round(self.avg_complexity)
 
     def function_at(self, line: int) -> FunctionMetrics | None:
         """Innermost function containing `line`, or None at module level."""
         best: FunctionMetrics | None = None
         for fn in self.functions:
-            if fn.line <= line <= fn.end_line:
-                if best is None or fn.line > best.line:
-                    best = fn
+            if fn.line <= line <= fn.end_line and (best is None or fn.line > best.line):
+                best = fn
         return best
 
     def to_dict(self) -> dict:

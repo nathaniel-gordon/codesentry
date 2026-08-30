@@ -13,8 +13,13 @@ import sqlite3
 import pytest
 
 from reviewer.analyzers import AnalyzerConfig, analyze_source
-from reviewer.cache import (ANALYZER_VERSION, AnalysisCache, CacheError,
-                            clear_cache, config_fingerprint)
+from reviewer.cache import (
+    ANALYZER_VERSION,
+    AnalysisCache,
+    CacheError,
+    clear_cache,
+    config_fingerprint,
+)
 from reviewer.errors import EXIT_OK
 from reviewer.metrics import module_metrics
 

@@ -13,8 +13,7 @@ import os
 
 from .analyzers import AnalyzerConfig
 from .cache import AnalysisCache
-from .diffing import (DiffStat, changed_lines_between, iter_python_files,
-                      parse_unified_diff)
+from .diffing import DiffStat, changed_lines_between, iter_python_files, parse_unified_diff
 from .errors import InputError
 from .logging_setup import get_logger
 from .review import ReviewResult, ReviewSession
@@ -85,7 +84,7 @@ def review_patch(root: str, diff_path: str, mode: str = "direct",
     directly.
     """
     try:
-        with open(diff_path, "r", encoding="utf-8", errors="replace") as handle:
+        with open(diff_path, encoding="utf-8", errors="replace") as handle:
             changed, stat = parse_unified_diff(handle.read())
     except OSError as exc:
         raise InputError(f"cannot read patch: {exc}", path=diff_path) from exc

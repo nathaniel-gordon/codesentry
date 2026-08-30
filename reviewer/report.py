@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .analyzers import SEVERITY_ORDER
 from .review import ReviewResult
@@ -23,7 +23,7 @@ def render_markdown(result: ReviewResult, title: str = "Code Review",
         "",
         f"- **Repository**: `{result.root}`",
         f"- **Mode**: {result.mode}",
-        f"- **Generated**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"- **Generated**: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}",
         f"- **Files reviewed**: {len(result.metrics)}  |  **SLOC**: {result.total_sloc}",
         f"- **Churn signal**: {result.churn.source}",
         "",
@@ -86,10 +86,10 @@ def render_markdown(result: ReviewResult, title: str = "Code Review",
     lines += ["## Findings", ""]
     if not result.findings:
         lines.append("_No findings._")
-    shown = 0
     current_file = ""
-    for finding in sorted(result.findings,
-                          key=lambda f: (f.file, f.line, SEVERITY_ORDER[f.severity])):
+    ordered = sorted(result.findings,
+                     key=lambda f: (f.file, f.line, SEVERITY_ORDER[f.severity]))
+    for shown, finding in enumerate(ordered):
         if shown >= max_findings:
             lines.append(f"\n_({len(result.findings) - shown} further findings omitted)_")
             break
@@ -104,7 +104,6 @@ def render_markdown(result: ReviewResult, title: str = "Code Review",
             f"  *Why it matters*: {finding.why}  ",
             f"  *Fix*: {finding.suggestion}",
         ]
-        shown += 1
     if result.duplicate_pairs:
         lines += ["", "## Duplicated blocks", "",
                   _table(["similarity", "first", "second"],

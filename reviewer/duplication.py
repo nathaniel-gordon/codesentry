@@ -15,7 +15,7 @@ import ast
 from collections import defaultdict
 from dataclasses import dataclass
 
-from .analyzers import Finding, RULES
+from .analyzers import RULES, Finding
 
 _PLACEHOLDER = {ast.Name: "N", ast.Constant: "C", ast.arg: "A", ast.Attribute: "T"}
 
@@ -80,8 +80,8 @@ def extract_blocks(file: str, tree: ast.Module) -> list[CodeBlock]:
     """
     blocks: list[CodeBlock] = []
 
-    def take(node: ast.AST) -> None:
-        end = getattr(node, "end_lineno", node.lineno) or node.lineno
+    def take(node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        end = node.end_lineno or node.lineno
         blocks.append(CodeBlock(file, node.name, node.lineno, end,
                                 tuple(_shape_tokens(node))))
 

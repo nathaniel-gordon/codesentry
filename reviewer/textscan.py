@@ -108,7 +108,7 @@ def search_text_files(root: str, pattern: str, max_hits: int = 40,
             if os.path.getsize(path) > MAX_FILE_BYTES:
                 log.debug("skipping oversized file", extra={"file": rel})
                 continue
-            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(path, encoding="utf-8", errors="replace") as handle:
                 for lineno, line in enumerate(handle, 1):
                     if time.monotonic() > stop_at:
                         log.warning("text scan deadline reached",

@@ -9,10 +9,19 @@ from __future__ import annotations
 
 import ast
 import os
-from dataclasses import dataclass, field as dc_field
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 
-from .analyzers import (CATEGORIES, SEVERITY_ORDER, SEVERITY_WEIGHT, AnalyzerConfig,
-                        Finding, RuleSpec, RULES, analyze_source)
+from .analyzers import (
+    CATEGORIES,
+    RULES,
+    SEVERITY_ORDER,
+    SEVERITY_WEIGHT,
+    AnalyzerConfig,
+    Finding,
+    RuleSpec,
+    analyze_source,
+)
 from .cache import AnalysisCache
 from .churn import ChurnModel, build_churn
 from .diffing import DiffStat, filter_findings, iter_python_files
@@ -69,7 +78,7 @@ class ReviewResult:
     @property
     def by_severity(self) -> dict[str, int]:
         """Finding counts per severity, always including all four keys."""
-        counts = {s: 0 for s in SEVERITY_ORDER}
+        counts = dict.fromkeys(SEVERITY_ORDER, 0)
         for finding in self.findings:
             counts[finding.severity] += 1
         return counts
@@ -179,7 +188,7 @@ class ReviewSession:
         if rel not in self.sources:
             path = self.abspath(rel)
             try:
-                with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                with open(path, encoding="utf-8", errors="replace") as fh:
                     self.sources[rel] = fh.read()
             except OSError as exc:
                 raise InputError(f"cannot read file: {exc}", path=rel) from exc

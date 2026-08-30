@@ -9,8 +9,7 @@ from __future__ import annotations
 from reviewer.analyzers import RULES, Finding, analyze_source
 from reviewer.errors import AnalysisError
 from reviewer.review import ReviewResult, ReviewSession
-from reviewer.sarif import (FINGERPRINT_KEY, LEVEL_FOR_SEVERITY, fingerprint,
-                            render_sarif)
+from reviewer.sarif import FINGERPRINT_KEY, LEVEL_FOR_SEVERITY, fingerprint, render_sarif
 
 SOURCE = '"""Module."""\n\n\ndef run(text):\n    """Run."""\n    return eval(text)\n'
 

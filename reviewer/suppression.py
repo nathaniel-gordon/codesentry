@@ -116,7 +116,7 @@ class Baseline:
     def load(cls, path: str) -> Baseline:
         """Read a baseline file written by `codesentry baseline`."""
         try:
-            with open(path, "r", encoding="utf-8") as handle:
+            with open(path, encoding="utf-8") as handle:
                 data = json.load(handle)
         except OSError as exc:
             raise ConfigError(f"cannot read baseline: {exc}", path=path) from exc

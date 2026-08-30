@@ -18,6 +18,7 @@ version is an error rather than a silent wrong answer.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -299,10 +300,10 @@ class AnalysisCache:
 
     def close(self) -> None:
         """Close the connection."""
-        try:
+        # Closing twice is harmless and happens whenever a context manager
+        # wraps a cache the caller also closed explicitly.
+        with contextlib.suppress(sqlite3.Error):
             self._conn.close()
-        except sqlite3.Error:  # pragma: no cover - closing twice is harmless
-            pass
 
     def __enter__(self) -> AnalysisCache:
         return self

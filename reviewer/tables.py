@@ -7,7 +7,7 @@ on column order.
 """
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def _cells(row: Sequence[object]) -> list[str]:

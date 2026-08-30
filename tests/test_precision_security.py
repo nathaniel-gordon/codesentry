@@ -3,8 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from reviewer.analyzers import (analyze_source, looks_like_secret_name,
-                                looks_like_secret_value, looks_like_sql_statement)
+from reviewer.analyzers import (
+    analyze_source,
+    looks_like_secret_name,
+    looks_like_secret_value,
+    looks_like_sql_statement,
+)
 
 HEADER = '"""Module."""\n\n\n'
 

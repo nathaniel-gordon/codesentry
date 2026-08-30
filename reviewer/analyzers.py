@@ -14,8 +14,8 @@ from __future__ import annotations
 import ast
 import math
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Iterator
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 SEVERITY_WEIGHT = {"critical": 10.0, "high": 6.0, "medium": 3.0, "low": 1.0}
@@ -328,7 +328,7 @@ def looks_like_sql_statement(text: str) -> bool:
         return False
     if head.isupper():
         return True
-    return len(set(m.group(0).lower() for m in SQL_CLAUSE_RE.finditer(rest))) >= 2
+    return len({m.group(0).lower() for m in SQL_CLAUSE_RE.finditer(rest)}) >= 2
 
 
 def _complexity(fn: ast.AST) -> int:
@@ -403,9 +403,9 @@ def _terminates(body: list[ast.stmt]) -> bool:
             main = _terminates(stmt.orelse) if stmt.orelse else _terminates(stmt.body)
             if handlers_ok and main:
                 return True
-        elif isinstance(stmt, ast.Match):
-            if stmt.cases and all(_terminates(c.body) for c in stmt.cases):
-                return True
+        elif (isinstance(stmt, ast.Match) and stmt.cases
+              and all(_terminates(c.body) for c in stmt.cases)):
+            return True
     return False
 
 
@@ -560,11 +560,12 @@ class _ModuleAnalysis:
                 self.add(node, "weak-hash", f"{dotted}() is a broken hash function",
                          "use hashlib.sha256, or pass usedforsecurity=False when "
                          "the digest is not a security control")
-        if name in ("execute", "executemany", "executescript") and node.args:
-            if self._is_built_sql(node.args[0]) and self._mentions_sql(node.args[0]):
-                self.add(node, "sql-injection",
-                         "SQL statement is assembled from a runtime value",
-                         "use a parameterised query: execute(sql, (value,))")
+        if (name in ("execute", "executemany", "executescript") and node.args
+                and self._is_built_sql(node.args[0])
+                and self._mentions_sql(node.args[0])):
+            self.add(node, "sql-injection",
+                     "SQL statement is assembled from a runtime value",
+                     "use a parameterised query: execute(sql, (value,))")
 
     @staticmethod
     def _is_built_sql(arg: ast.expr) -> bool:
@@ -573,10 +574,8 @@ class _ModuleAnalysis:
             return any(isinstance(v, ast.FormattedValue) for v in arg.values)
         if isinstance(arg, ast.BinOp) and isinstance(arg.op, (ast.Add, ast.Mod)):
             return True
-        if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Attribute) \
-                and arg.func.attr == "format":
-            return True
-        return False
+        return (isinstance(arg, ast.Call) and isinstance(arg.func, ast.Attribute)
+                and arg.func.attr == "format")
 
     def _security_assign(self, node: ast.Assign | ast.AnnAssign) -> None:
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
