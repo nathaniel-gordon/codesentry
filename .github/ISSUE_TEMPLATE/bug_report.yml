@@ -1,0 +1,60 @@
+name: Bug report
+description: The tool crashed, hung, or produced the wrong output
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a rule firing on correct code use the **False positive** template
+        instead. For anything exploitable see SECURITY.md - please do not open a
+        public issue.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the exit code (`echo $?`). 0 clean, 1 gate failed, 2 usage, 3 internal failure.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      description: >-
+        Re-run with `--log-level debug --log-format json` and paste the records.
+        Every line carries the same `run_id`; include all of them. Redact
+        anything you do not want public - the tool redacts secret-shaped log
+        fields but cannot know what your file paths reveal.
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version and Python
+      placeholder: "codesentry 0.3.0, Python 3.12 on Ubuntu 24.04"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Smallest input that reproduces it
+      description: A file or a small tree. Skip if the bug does not depend on the reviewed code.

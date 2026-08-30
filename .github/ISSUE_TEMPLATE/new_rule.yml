@@ -1,0 +1,61 @@
+name: New rule
+description: Propose a defect the analyzer should detect
+labels: ["rule"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A rule needs three things to land: the shape it fires on, the shape it
+        must stay quiet on, and a consequence worth a developer's attention.
+
+  - type: input
+    id: name
+    attributes:
+      label: Proposed rule id
+      placeholder: mutable-default-argument
+    validations:
+      required: true
+
+  - type: dropdown
+    id: pack
+    attributes:
+      label: Pack
+      options: [security, correctness, complexity, maintainability]
+    validations:
+      required: true
+
+  - type: textarea
+    id: positive
+    attributes:
+      label: Code it should fire on
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: negative
+    attributes:
+      label: Similar code it must NOT fire on
+      description: The look-alike. Without one the rule cannot be measured for precision.
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What goes wrong in production if this ships
+      description: One paragraph, the consequence rather than the mechanics. It becomes the rule's `why`.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: feasible
+    attributes:
+      label: Feasibility
+      description: >-
+        The analyzer works on one module's AST at a time, with no dataflow, no
+        type inference and no cross-file reasoning except structural clone
+        detection.
+      options:
+        - label: This can be decided from a single file's AST

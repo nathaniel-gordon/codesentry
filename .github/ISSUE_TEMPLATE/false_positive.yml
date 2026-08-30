@@ -1,0 +1,53 @@
+name: False positive
+description: A rule fired on code that is correct
+labels: ["false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Precision is measured against `reviewer/negatives.py`. A confirmed false
+        positive becomes a new entry there, so this is the most useful issue the
+        project can get.
+
+  - type: input
+    id: rule
+    attributes:
+      label: Rule id
+      description: The `rule` column from the report, e.g. `sql-injection`.
+      placeholder: hardcoded-secret
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Smallest source that triggers it
+      description: A complete file, as small as you can make it. It will be added to the negative corpus.
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      render: shell
+      placeholder: codesentry review src/ --format json
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why the code is correct
+      description: What makes this shape safe, so the rule can learn to tell them apart.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version and Python
+      placeholder: "codesentry 0.3.0, Python 3.12 on Ubuntu 24.04"
+    validations:
+      required: true
