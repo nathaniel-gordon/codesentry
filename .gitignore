@@ -45,3 +45,9 @@ htmlcov/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Generated review artifacts and demo corpora
+output/
+.codesentry-cache/
+.ruff_cache/
+.mypy_cache/
