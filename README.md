@@ -37,7 +37,7 @@ production.
 ## Architecture
 
 ```
-                    codesentry review|diff|patch|metrics|baseline|cache|health|demo|eval
+              codesentry review|diff|patch|metrics|rules|baseline|cache|health|demo|eval
                                               __main__.py
                                     argument plumbing, gates, exit codes
                                                    |
@@ -45,6 +45,7 @@ production.
                                                    |
                                               pipeline.py
                               review_repo / review_diff / review_patch
+                                    diffing.py  file discovery, diff parsing
                                        |                       |
                           mode=direct  |                       |  mode=agent
                               scan.py  |                       |  agent.py + agent_core.py
@@ -70,13 +71,14 @@ production.
                     risk ranking     severity x local complexity x churn
                     health score     density, complexity, duplication, docs
                                           |
-                    report.py  ->  markdown + JSON
+                    report.py  ->  markdown + JSON   (tables.py renders both)
                     sarif.py   ->  SARIF 2.1.0
                     telemetry.py -> counters + latency histograms (--metrics-out)
 
   errors.py         typed failures mapped onto four exit codes
   logging_setup.py  structured logs with one run id per run
   health.py         liveness / readiness probes
+  llm.py            the optional Claude planner behind --planner llm
   datagen.py + negatives.py + evaluation.py   the corpus and its scoring
 ```
 
