@@ -136,13 +136,43 @@ def _settings(args: argparse.Namespace, root: str) -> Settings:
         cache=getattr(args, "cache", None))
 
 
+def _common_root(dirs: list[str], files: list[str]) -> str:
+    """Deepest directory containing every given path."""
+    anchors = dirs + [os.path.dirname(p) for p in files]
+    try:
+        root = os.path.commonpath(anchors) if anchors else os.getcwd()
+    except ValueError as exc:  # different drives on Windows
+        raise UsageError("paths must share a drive to be reviewed together",
+                         paths=len(anchors)) from exc
+    return os.path.dirname(root) if os.path.isfile(root) else root
+
+
+def _relative_python_files(root: str, dirs: list[str], files: list[str]) -> list[str]:
+    """Every .py file named directly or contained in a named directory."""
+    rels = {os.path.relpath(p, root).replace(os.sep, "/") for p in files
+            if p.endswith(".py")}
+    for directory in dirs:
+        prefix = os.path.relpath(directory, root).replace(os.sep, "/")
+        rels.update(f"{prefix}/{rel}" if prefix != "." else rel
+                    for rel in iter_python_files(directory))
+    return sorted(rels)
+
+
+def _apply_exclude(rels: list[str], exclude: tuple[str, ...]) -> list[str]:
+    """Drop paths under any excluded prefix."""
+    return [rel for rel in rels
+            if not any(rel == pat or rel.startswith(pat.rstrip("/") + "/")
+                       for pat in exclude)]
+
+
 def resolve_targets(paths: list[str], exclude: tuple[str, ...] = ()
                     ) -> tuple[str, list[str] | None]:
     """Turn N files and directories into one review root plus a file list.
 
     pre-commit appends every staged filename to the hook command, so accepting
     exactly one path (which is what the CLI used to do) made any commit touching
-    two Python files fail with an argparse usage error.
+    two Python files fail with an argparse usage error. A file list of None
+    means "walk the root", which is the common single-directory case.
     """
     resolved = [os.path.abspath(p) for p in paths]
     for path in resolved:
@@ -151,33 +181,16 @@ def resolve_targets(paths: list[str], exclude: tuple[str, ...] = ()
     dirs = [p for p in resolved if os.path.isdir(p)]
     files = [p for p in resolved if not os.path.isdir(p)]
     if len(resolved) == 1 and dirs:
-        root = dirs[0]
-        selected = None
+        root, selected = dirs[0], None
     else:
-        anchors = dirs + [os.path.dirname(p) for p in files]
-        try:
-            root = os.path.commonpath(anchors) if anchors else os.getcwd()
-        except ValueError as exc:  # different drives on Windows
-            raise UsageError("paths must share a drive to be reviewed together",
-                             paths=len(resolved)) from exc
-        if os.path.isfile(root):  # commonpath of one file is that file
-            root = os.path.dirname(root)
-        rels = {os.path.relpath(p, root).replace(os.sep, "/") for p in files
-                if p.endswith(".py")}
-        for directory in dirs:
-            prefix = os.path.relpath(directory, root).replace(os.sep, "/")
-            rels.update(f"{prefix}/{rel}" if prefix != "." else rel
-                        for rel in iter_python_files(directory))
-        selected = sorted(rels)
+        root = _common_root(dirs, files)
+        selected = _relative_python_files(root, dirs, files)
         if not selected:
             raise InputError("no Python files among the given paths",
                              paths=len(resolved))
     if exclude:
         pool = selected if selected is not None else iter_python_files(root)
-        kept = [rel for rel in pool
-                if not any(rel == pat or rel.startswith(pat.rstrip("/") + "/")
-                           for pat in exclude)]
-        selected = kept
+        selected = _apply_exclude(pool, exclude)
     return root, selected
 
 
