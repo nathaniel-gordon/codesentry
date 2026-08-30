@@ -7,8 +7,8 @@ Output is markdown, JSON or SARIF 2.1.0; results are cached per file so a warm
 run does not re-parse the tree.
 
 This is a reference implementation and a demo. It is not deployed anywhere, there
-is no hosted service, nothing has been pushed, and nobody is running it in
-production.
+is no hosted service, none of this work has been pushed - the remote holds only
+the initial commit - and nobody is running it in production.
 
 ## What it does
 
@@ -319,7 +319,8 @@ seventeen files' worth of behaviour, some of it swept over generated inputs.
 | `test_churn.py` | the three churn sources, against a real throwaway repository |
 
 Only Python 3.14.6 has actually been exercised here. The CI matrix declares
-3.11 through 3.14, and **that matrix has never run** - nothing has been pushed.
+3.11 through 3.14, and **that matrix has never run**: the workflow file has
+never reached the remote.
 
 ## Observability
 
@@ -428,8 +429,8 @@ installability of the package, not pre-commit's own venv bootstrap.
 and uploads the SARIF to code scanning. `.github/workflows/ci.yml` runs lint,
 type check, tests with coverage on four Python versions, the demo and evaluation,
 a docker build, and this repository analyzed by itself. **Neither has run
-anywhere** - nothing has been pushed, so there is no green build to point at. The
-YAML parses and every command in it was run locally first.
+anywhere** - neither file has reached the remote, so there is no green build to
+point at. The YAML parses and every command in it was run locally first.
 
 ## Limitations
 
@@ -458,8 +459,8 @@ YAML parses and every command in it was run locally first.
   nothing calls it automatically.
 - **Only Python 3.14 has been exercised.** The declared floor is 3.11 and the CI
   matrix covers 3.11-3.14, but that matrix has never run.
-- **No CI run, no deployment, no users, no published package.** Nothing here has
-  been pushed.
+- **No CI run, no deployment, no users, no published package.** The remote holds
+  only the initial commit; none of the work described here has been pushed.
 
 ## Roadmap
 

@@ -135,9 +135,10 @@ jobs:
 
 `action.yml` is a composite action: it installs the package, runs the analyzer,
 and uploads the SARIF to code scanning. **This has not run on GitHub.** Nothing
-in this repository has been pushed, so there is no workflow run to point at. The
-YAML parses and the underlying commands are the ones exercised locally and in
-`tests/test_integration.py`; that is the extent of it.
+in this repository past the initial commit has been pushed, so there is no
+workflow run to point at. The YAML parses and the underlying commands are the
+ones exercised locally and in `tests/test_integration.py`; that is the extent
+of it.
 
 Pin the `rev`/tag rather than tracking a branch. Rule behaviour changes between
 versions, and an unpinned analyzer is a build that can start failing without a
