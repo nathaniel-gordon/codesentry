@@ -12,6 +12,7 @@ a reviewer can audit the whole policy in one place and reports stay consistent.
 from __future__ import annotations
 
 import ast
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Iterator
@@ -192,9 +193,54 @@ class AnalyzerConfig:
     skip_rules: frozenset[str] = field(default_factory=frozenset)
 
 
+#: Rule packs. The four categories are the packs; there is no fifth grouping,
+#: because every rule belongs to exactly one category and inventing an extra
+#: bundle would only be a second name for the same set.
+PACKS: dict[str, frozenset[str]] = {
+    category: frozenset(rule for rule, spec in RULES.items()
+                        if spec.category == category)
+    for category in CATEGORIES
+}
+
 SECRET_RE = re.compile(r"(?i)(password|passwd|secret|api[_-]?key|token|private[_-]?key)")
-SECRET_VALUE_RE = re.compile(r"^[A-Za-z0-9+/_\-]{8,}$")
-SQL_RE = re.compile(r"(?i)\b(select|insert\s+into|update|delete\s+from|drop\s+table)\b")
+SECRET_VALUE_RE = re.compile(r"^[A-Za-z0-9+/=_\-.]+$")
+#: Targets whose *name* says the value is a name, not the credential itself.
+#: `API_KEY_HEADER = "X-Api-Key"` is a constant every HTTP client needs.
+SECRET_NAME_SUFFIXES = (
+    "_header", "_headers", "_field", "_fields", "_name", "_names", "_env",
+    "_envvar", "_env_var", "_var", "_param", "_params", "_key_name", "_column",
+    "_prefix", "_suffix", "_label", "_attr", "_arg", "_pattern", "_regex",
+    "_re", "_template", "_format", "_message", "_url", "_path", "_scheme",
+    "_type", "_kind", "_id",
+)
+#: Values that are obviously not live credentials. Matched against the value
+#: with digits and punctuation stripped, so `changeme_1234` is caught while
+#: `rk_test_51Hb9xKLm4NpQ7` (a real key shape) is not.
+SECRET_PLACEHOLDER_WORDS = frozenset({
+    "changeme", "placeholder", "example", "todo", "redacted", "dummy",
+    "sample", "notasecret", "none", "null", "unset", "fake", "secret",
+    "password", "token", "apikey", "yourapikey", "insertkeyhere",
+})
+SECRET_PLACEHOLDER_PREFIXES = ("your", "<", "${", "{{", "xxxx", "****")
+SECRET_MIN_LEN = 12
+SECRET_MIN_ENTROPY = 3.0
+
+#: A SQL statement head, and the clause each head must be followed by before the
+#: string is treated as SQL rather than English prose that happens to contain
+#: the word "update" or "select".
+SQL_HEAD_RE = re.compile(r"(?s)^\s*(SELECT|INSERT|UPDATE|DELETE|REPLACE|MERGE|"
+                         r"CREATE|ALTER|DROP|TRUNCATE)\b(.*)$", re.IGNORECASE)
+SQL_REQUIRED_CLAUSE = {
+    "select": r"\bfrom\b", "delete": r"\bfrom\b", "insert": r"\binto\b",
+    "replace": r"\binto\b", "merge": r"\binto\b", "update": r"\bset\b",
+    "create": r"\b(table|index|view|database|schema|trigger)\b",
+    "alter": r"\b(table|index|view|database|schema)\b",
+    "drop": r"\b(table|index|view|database|schema)\b",
+    "truncate": r"\btable\b",
+}
+SQL_CLAUSE_RE = re.compile(
+    r"(?i)\b(from|into|set|where|values|join|table|order\s+by|group\s+by|"
+    r"limit|returning|on\s+conflict)\b")
 TODO_RE = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)\b")
 SHADOWABLE_BUILTINS = frozenset({
     "all", "any", "bytes", "dict", "dir", "filter", "format", "hash", "id",
@@ -203,6 +249,86 @@ SHADOWABLE_BUILTINS = frozenset({
 })
 DESERIALIZERS = {("pickle", "load"), ("pickle", "loads"), ("marshal", "loads"),
                  ("cPickle", "loads"), ("dill", "loads")}
+
+
+def shannon_entropy(text: str) -> float:
+    """Bits of entropy per character. Low for words, high for random tokens."""
+    if not text:
+        return 0.0
+    counts: dict[str, int] = {}
+    for ch in text:
+        counts[ch] = counts.get(ch, 0) + 1
+    total = len(text)
+    return -sum((n / total) * math.log2(n / total) for n in counts.values())
+
+
+def _charset_classes(text: str) -> int:
+    """How many of {lowercase, uppercase, digit} the value uses.
+
+    Separators are deliberately excluded: counting '_' as a class would let
+    `MYAPP_ACCESS_TOKEN` through, which is exactly the name-shaped constant this
+    gate exists to reject.
+    """
+    return sum((
+        any(c.islower() for c in text),
+        any(c.isupper() for c in text),
+        any(c.isdigit() for c in text),
+    ))
+
+
+def looks_like_secret_name(label: str) -> bool:
+    """True when the assignment target names a credential rather than a name of one.
+
+    `API_KEY` is a credential. `API_KEY_HEADER`, `TOKEN_ENV_VAR` and
+    `PASSWORD_FIELD` are the *names* of places a credential lives, and flagging
+    them as critical findings is the fastest way to get a linter uninstalled.
+    """
+    lowered = label.lower()
+    if not SECRET_RE.search(lowered):
+        return False
+    return not lowered.endswith(SECRET_NAME_SUFFIXES)
+
+
+def looks_like_secret_value(value: str) -> bool:
+    """True when a literal string is shaped like a live credential.
+
+    Four independent gates, because any one of them alone over-fires: a length
+    floor, a charset the token formats actually use, at least two character
+    classes (which rejects `user_password` and `MYAPP_TOKEN`), and a Shannon
+    entropy floor (which rejects repeated or dictionary-ish text).
+    """
+    if len(value) < SECRET_MIN_LEN or len(value) > 512:
+        return False
+    lowered = value.lower()
+    if lowered.startswith(SECRET_PLACEHOLDER_PREFIXES):
+        return False
+    if re.sub(r"[^a-z]", "", lowered) in SECRET_PLACEHOLDER_WORDS:
+        return False
+    if not SECRET_VALUE_RE.match(value):
+        return False   # spaces, quotes, slashes: prose or a URL, not a token
+    if _charset_classes(value) < 2:
+        return False   # SCREAMING_SNAKE env-var names, snake_case field names
+    return shannon_entropy(value) >= SECRET_MIN_ENTROPY
+
+
+def looks_like_sql_statement(text: str) -> bool:
+    """True when a string literal is the head of a real SQL statement.
+
+    Requires a statement keyword at the *start* of the literal followed by the
+    clause that keyword mandates, so 'update the cache for ' is not SQL while
+    'UPDATE accounts SET balance = ' is. A lowercase head additionally needs a
+    second clause keyword, because lowercase SQL verbs are ordinary English.
+    """
+    head_match = SQL_HEAD_RE.match(text)
+    if not head_match:
+        return False
+    head, rest = head_match.group(1), head_match.group(2)
+    required = SQL_REQUIRED_CLAUSE[head.lower()]
+    if not re.search(required, rest, re.IGNORECASE):
+        return False
+    if head.isupper():
+        return True
+    return len(set(m.group(0).lower() for m in SQL_CLAUSE_RE.finditer(rest))) >= 2
 
 
 def _complexity(fn: ast.AST) -> int:
@@ -427,7 +553,7 @@ class _ModuleAnalysis:
             self.add(node, "weak-hash", f"{dotted}() is a broken hash function",
                      "use hashlib.sha256, or hmac/scrypt for secrets")
         if name in ("execute", "executemany", "executescript") and node.args:
-            if self._is_built_sql(node.args[0]):
+            if self._is_built_sql(node.args[0]) and self._mentions_sql(node.args[0]):
                 self.add(node, "sql-injection",
                          "SQL statement is assembled from a runtime value",
                          "use a parameterised query: execute(sql, (value,))")
@@ -451,9 +577,9 @@ class _ModuleAnalysis:
             label = tgt.id if isinstance(tgt, ast.Name) else _dotted(tgt)
             if not label:
                 continue
-            if SECRET_RE.search(label) and isinstance(value, ast.Constant) \
+            if looks_like_secret_name(label) and isinstance(value, ast.Constant) \
                     and isinstance(value.value, str) \
-                    and SECRET_VALUE_RE.match(value.value):
+                    and looks_like_secret_value(value.value):
                 self.add(node, "hardcoded-secret",
                          f"'{label}' is assigned a literal credential-looking string",
                          "read it from os.environ / a secret manager and rotate this value")
@@ -465,9 +591,9 @@ class _ModuleAnalysis:
 
     @staticmethod
     def _mentions_sql(value: ast.expr) -> bool:
-        """True when a built string literally contains SQL keywords."""
+        """True when one of the literals in `value` is the head of a SQL statement."""
         return any(isinstance(n, ast.Constant) and isinstance(n.value, str)
-                   and SQL_RE.search(n.value) for n in ast.walk(value))
+                   and looks_like_sql_statement(n.value) for n in ast.walk(value))
 
     def _security_assert(self, node: ast.Assert) -> None:
         fn = None
