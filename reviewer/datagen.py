@@ -18,6 +18,7 @@ import textwrap
 from dataclasses import dataclass, field
 
 from .analyzers import RULES
+from .negatives import NEGATIVE_FILES
 
 
 @dataclass(frozen=True)
@@ -525,9 +526,14 @@ _PACKAGE_DOCS = {
 _BUILDERS = (_gateway, _validation, _stock, _reporting, _legacy, _helpers,
              _config, _models)
 
+#: Ordinary application code written to be defect-free.
 CLEAN_FILES = ("core/config.py", "core/models.py", "utils/helpers.py",
                "payments/__init__.py", "inventory/__init__.py",
                "utils/__init__.py", "core/__init__.py")
+
+#: Clean files plus the adversarial near-miss set. Together these are the
+#: negative corpus: any finding on one of them is a measured false positive.
+BENIGN_FILES = CLEAN_FILES + tuple(sorted(NEGATIVE_FILES))
 
 #: A credential the AST passes cannot see - only the agent's search_pattern tool
 #: reaches non-Python files, which is what makes the agent layer load-bearing.
@@ -550,12 +556,13 @@ def build_manifest(root: str, head: bool = False) -> DemoManifest:
         plants.extend(made.plants)
     for path, doc in _PACKAGE_DOCS.items():
         files[path] = f'"""{doc}"""\n'
+    files.update(NEGATIVE_FILES)
     files["payments/settings.ini"] = SETTINGS_INI
     # Reachable only through the agent's search_pattern tool: no AST pass parses .ini.
     plants.append(Plant("payments/settings.ini", SETTINGS_SECRET_LINE,
                         "hardcoded-secret", RULES["hardcoded-secret"].category))
     plants.sort(key=lambda p: (p.file, p.line, p.rule))
-    return DemoManifest(root=root, files=files, plants=plants, clean_files=CLEAN_FILES)
+    return DemoManifest(root=root, files=files, plants=plants, clean_files=BENIGN_FILES)
 
 
 def write_demo_repo(root: str, head: bool = False, seed: int = 42) -> DemoManifest:
