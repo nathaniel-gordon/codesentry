@@ -1,14 +1,21 @@
 """Score a review against the demo repo's ground truth.
 
-Recall alone is easy to game (report everything). The clean-file check is the
-other half: files the generator wrote to be defect-free must produce zero
-findings, so a rule that over-fires shows up immediately as lost precision.
+Recall alone is easy to game (report everything), so precision is measured too -
+but only where it can be measured honestly. Files the generator wrote to be
+benign are the negative corpus: any finding on one of them is a false positive
+by construction, because nothing defective was written there. Findings on a file
+that *does* contain planted defects are not counted either way, since the
+generator never claimed those files were otherwise clean.
+
+That is the whole basis for the per-rule table `codesentry eval` prints. It is a
+measurement on a synthetic corpus and nothing more; it does not predict how the
+rules behave on real code.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .analyzers import Finding
+from .analyzers import RULES, Finding
 from .datagen import DemoManifest, Plant
 
 
@@ -57,6 +64,67 @@ class EvalResult:
             "category_recall": {k: list(v) for k, v in self.category_recall.items()},
             "unplanted_findings": self.extra_findings,
         }
+
+
+@dataclass(frozen=True)
+class RuleScore:
+    """Per-rule confusion counts on the corpus.
+
+    `fp` counts only findings on the benign files, which is the sole place a
+    false positive is provable. A rule with no plant and no benign hit scores
+    zero across the board and is reported as unmeasured rather than as perfect.
+    """
+
+    rule: str
+    tp: int
+    fp: int
+    fn: int
+
+    @property
+    def measured(self) -> bool:
+        """False when the corpus exercises this rule neither way."""
+        return bool(self.tp or self.fp or self.fn)
+
+    @property
+    def precision(self) -> float:
+        """TP / (TP + FP), or 0.0 when the rule never fired."""
+        total = self.tp + self.fp
+        return self.tp / total if total else 0.0
+
+    @property
+    def recall(self) -> float:
+        """TP / (TP + FN), or 0.0 when nothing was planted for this rule."""
+        total = self.tp + self.fn
+        return self.tp / total if total else 0.0
+
+    @property
+    def f1(self) -> float:
+        """Harmonic mean of precision and recall."""
+        p, r = self.precision, self.recall
+        return 2 * p * r / (p + r) if p + r else 0.0
+
+    def to_dict(self) -> dict:
+        """Return a JSON-serialisable view."""
+        return {"rule": self.rule, "tp": self.tp, "fp": self.fp, "fn": self.fn,
+                "precision": round(self.precision, 4),
+                "recall": round(self.recall, 4), "f1": round(self.f1, 4),
+                "measured": self.measured}
+
+
+def rule_scores(findings: list[Finding], manifest: DemoManifest) -> list[RuleScore]:
+    """Per-rule TP/FP/FN, ordered by rule id; unmeasured rules are omitted."""
+    reported = {f.key for f in findings}
+    benign = set(manifest.clean_files)
+    scores: list[RuleScore] = []
+    for rule in sorted(RULES):
+        planted = [p for p in manifest.plants if p.rule == rule]
+        tp = sum(1 for p in planted if p.key in reported)
+        fn = len(planted) - tp
+        fp = sum(1 for f in findings if f.rule == rule and f.file in benign)
+        score = RuleScore(rule=rule, tp=tp, fp=fp, fn=fn)
+        if score.measured:
+            scores.append(score)
+    return scores
 
 
 def evaluate(findings: list[Finding], manifest: DemoManifest) -> EvalResult:
