@@ -37,9 +37,20 @@ class Finding:
     risk: float = 0.0
 
     def __post_init__(self) -> None:
-        # The original analyzer emitted upper-case severities; normalise so old
-        # call sites keep working while reports use one vocabulary.
-        self.severity = self.severity.lower()
+        # One vocabulary everywhere: severity and category are closed sets, and
+        # the risk model indexes SEVERITY_WEIGHT by severity, so an out-of-
+        # vocabulary value must be rejected here rather than crashing scoring.
+        self.severity = self.severity.strip().lower()
+        self.category = self.category.strip().lower()
+        if self.severity not in SEVERITY_ORDER:
+            raise ValueError(
+                f"unknown severity {self.severity!r}; expected one of "
+                f"{', '.join(SEVERITY_ORDER)}")
+        if self.category not in CATEGORIES:
+            raise ValueError(
+                f"unknown category {self.category!r}; expected one of "
+                f"{', '.join(CATEGORIES)}")
+        self.line = max(1, int(self.line))
 
     @property
     def key(self) -> tuple[str, int, str]:
@@ -324,6 +335,54 @@ class _ModuleAnalysis:
         """True when the call is the context expression of a `with` statement."""
         return isinstance(self.parents.get(call), ast.withitem)
 
+    def enclosing_scope(self, node: ast.AST) -> ast.AST:
+        """Nearest enclosing def/lambda/class, falling back to the module."""
+        cur = self.parents.get(node)
+        while cur is not None:
+            if isinstance(cur, _SCOPE_NODES):
+                return cur
+            cur = self.parents.get(cur)
+        return self.tree
+
+    def _resource_is_managed(self, call: ast.Call) -> bool:
+        """True when this `open()` result has an owner that will close it.
+
+        `with open(...)` is handled by the caller. This covers the four remaining
+        shapes that are genuinely safe (or whose safety is somebody else's
+        problem) and would otherwise be reported as leaks:
+
+        * wrapped in `contextlib.closing(...)`, which the enclosing `with` closes;
+        * assigned to a local that a later `.close()` in the same scope closes,
+          which is the try/finally idiom;
+        * stored on an attribute (`self.fh = open(...)`), so the object owns it;
+        * returned or yielded, which hands ownership to the caller.
+        """
+        parent = self.parents.get(call)
+        if isinstance(parent, ast.Call) and _dotted(parent.func).endswith("closing"):
+            return True
+        if isinstance(parent, (ast.Return, ast.Yield)):
+            return True
+        if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
+            targets = (parent.targets if isinstance(parent, ast.Assign)
+                       else [parent.target])
+            names: list[str] = []
+            for tgt in targets:
+                if isinstance(tgt, ast.Name):
+                    names.append(tgt.id)
+                elif isinstance(tgt, ast.Attribute):
+                    return True  # stored on an object; its lifetime owns the handle
+            if names and self._closes_any(self.enclosing_scope(call), names):
+                return True
+        return False
+
+    def _closes_any(self, scope: ast.AST, names: list[str]) -> bool:
+        """True when `scope` calls `.close()` on one of `names` (try/finally idiom)."""
+        wanted = {f"{name}.close" for name in names}
+        for node in _iter_own(scope):
+            if isinstance(node, ast.Call) and _dotted(node.func) in wanted:
+                return True
+        return False
+
     # -- pass 1: security --------------------------------------------------
     def pass_security(self) -> None:
         """Injection, credential and deserialization rules."""
@@ -506,7 +565,10 @@ class _ModuleAnalysis:
             offset = sub.slice
             if isinstance(offset, ast.BinOp) and isinstance(offset.op, ast.Add) \
                     and isinstance(offset.left, ast.Name) and offset.left.id == idx \
-                    and isinstance(offset.right, ast.Constant) and offset.right.value >= 1:
+                    and isinstance(offset.right, ast.Constant) \
+                    and isinstance(offset.right.value, int) \
+                    and not isinstance(offset.right.value, bool) \
+                    and offset.right.value >= 1:
                 self.add(sub, "off-by-one",
                          f"{seq}[{idx} + {offset.right.value}] reads past the end on the "
                          "last iteration",
@@ -743,14 +805,9 @@ def module_imports(tree: ast.Module) -> set[str]:
 
 
 def analyze_source(path: str, source: str, config: AnalyzerConfig | None = None,
-                   tree: ast.Module | None = None, **legacy) -> list[Finding]:
-    """Run all four passes over one module and return findings sorted by location.
-
-    `legacy` keeps the original keyword thresholds (max_complexity=..., etc.)
-    working for callers written against the first version of this module.
-    """
-    cfg = config or AnalyzerConfig(**{k: v for k, v in legacy.items()
-                                      if k in AnalyzerConfig.__dataclass_fields__})
+                   tree: ast.Module | None = None) -> list[Finding]:
+    """Run all four passes over one module and return findings sorted by location."""
+    cfg = config or AnalyzerConfig()
     if tree is None:
         try:
             tree = ast.parse(source, filename=path)
