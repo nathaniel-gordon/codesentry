@@ -207,3 +207,18 @@ def test_diff_command_gates_on_severity(tmp_path):
 def test_diff_command_rejects_a_missing_directory(tmp_path):
     assert run("diff", "--base", str(tmp_path / "nope"), "--head", str(tmp_path),
                "--no-cache", "--quiet") == EXIT_USAGE
+
+
+def test_report_records_the_settings_it_ran_with(project, tmp_path):
+    """A report has to be reproducible from itself, not from today's config."""
+    out = tmp_path / "reports"
+    run("review", str(project), "--out", str(out), "--no-cache", "--quiet",
+        "--ignore", "eval-exec", "--no-config")
+    payload = json.loads((out / "review.json").read_text(encoding="utf-8"))
+    assert payload["run_id"]
+    assert "eval-exec" in payload["settings"]["skipped_rules"]
+
+
+def test_log_flags_are_accepted_after_the_subcommand(project, tmp_path):
+    assert run("review", str(project / "clean.py"), "--out", str(tmp_path / "r"),
+               "--no-cache", "--quiet", "--log-level", "error") == EXIT_OK

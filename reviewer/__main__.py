@@ -115,10 +115,18 @@ def _add_gate_flags(parser: argparse.ArgumentParser) -> None:
                        help="ignore findings listed in this baseline file")
 
 
-def _add_log_flags(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--log-level", default="warning",
+def _add_log_flags(parser: argparse.ArgumentParser, *, top: bool = False) -> None:
+    """Logging flags, accepted before *and* after the subcommand.
+
+    The subcommand copies default to SUPPRESS so that an absent flag leaves the
+    attribute unset rather than overwriting a value given before the subcommand.
+    """
+    default_level = "warning" if top else argparse.SUPPRESS
+    default_format = "text" if top else argparse.SUPPRESS
+    parser.add_argument("--log-level", default=default_level,
                         choices=("debug", "info", "warning", "error"))
-    parser.add_argument("--log-format", default="text", choices=("text", "json"))
+    parser.add_argument("--log-format", default=default_format,
+                        choices=("text", "json"))
 
 
 def _settings(args: argparse.Namespace, root: str) -> Settings:
@@ -296,6 +304,8 @@ def _gate(result: ReviewResult, settings: Settings) -> int:
 
 def _finish(result: ReviewResult, engine: str, args: argparse.Namespace,
             settings: Settings, label: str, title: str) -> int:
+    result.settings = settings.to_dict()
+    result.run_id = current_run_id()
     if not args.quiet and not args.stdout:
         _print_result(result, engine, label)
     written = _emit(result, args, title)
@@ -525,7 +535,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="AST-based Python static analyzer with SARIF output, "
                     "an incremental cache and a planted-defect corpus.",
         epilog="exit codes: 0 clean, 1 gate failed, 2 usage, 3 internal failure")
-    _add_log_flags(parser)
+    _add_log_flags(parser, top=True)
     sub = parser.add_subparsers(dest="command", required=True)
 
     review = sub.add_parser("review", help="analyze files or directories")
@@ -593,6 +603,8 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_cmd.add_argument("--out", default=None)
     evaluate_cmd.set_defaults(func=cmd_eval)
 
+    for name, subparser in sub.choices.items():  # noqa: B007 - name is for clarity
+        _add_log_flags(subparser)
     return parser
 
 

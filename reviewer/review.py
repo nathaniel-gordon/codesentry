@@ -27,7 +27,7 @@ from .churn import ChurnModel, build_churn
 from .diffing import DiffStat, filter_findings, iter_python_files
 from .duplication import CodeBlock, duplicate_findings, extract_blocks, find_duplicates
 from .errors import AnalysisError, InputError, ToolInputError
-from .logging_setup import get_logger
+from .logging_setup import current_run_id, get_logger
 from .metrics import ModuleMetrics, module_metrics
 from .suppression import Suppressions
 from .textscan import search_text_files
@@ -69,6 +69,10 @@ class ReviewResult:
     errors: list[AnalysisError] = dc_field(default_factory=list)
     suppressed: dict = dc_field(default_factory=dict)
     cache_stats: dict = dc_field(default_factory=dict)
+    #: The effective settings this run used, so a report can be reproduced from
+    #: itself rather than from whatever the config file says today.
+    settings: dict = dc_field(default_factory=dict)
+    run_id: str = ""
 
     @property
     def ok(self) -> bool:
@@ -117,6 +121,8 @@ class ReviewResult:
             "root": self.root,
             "mode": self.mode,
             "ok": self.ok,
+            "run_id": self.run_id or current_run_id(),
+            "settings": self.settings,
             "errors": [e.to_dict() for e in self.errors],
             "summary": {
                 "files_reviewed": len(self.metrics),
