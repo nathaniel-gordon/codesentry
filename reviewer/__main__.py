@@ -9,6 +9,7 @@ Subcommands, roughly in order of how often they get used:
     rules                      the rule table and the packs it groups into
     baseline <path...>         freeze today's findings so only new ones fail
     cache                      inspect or clear the incremental cache
+    health   [path]            liveness/readiness probe (the container's HEALTHCHECK)
     demo                       generate the planted-defect corpus and review it
     eval                       score detection and precision against that corpus
 
@@ -39,6 +40,7 @@ from .errors import (
     UsageError,
 )
 from .evaluation import evaluate, rule_scores
+from .health import report as health_report
 from .logging_setup import configure_logging, current_run_id, get_logger
 from .pipeline import default_output_dir, review_diff, review_patch, review_repo
 from .report import write_reports
@@ -46,6 +48,7 @@ from .review import ReviewResult
 from .sarif import write_sarif
 from .suppression import Baseline, Suppressions
 from .tables import text_table
+from .telemetry import declare, write_metrics
 
 log = get_logger("cli")
 
@@ -103,6 +106,9 @@ def _add_output_flags(parser: argparse.ArgumentParser, stem: str) -> None:
     group.add_argument("--stem", default=stem, help="report filename stem")
     group.add_argument("--quiet", action="store_true",
                        help="suppress the summary tables; gates still apply")
+    group.add_argument("--metrics-out", default=None, metavar="PATH",
+                       help="dump run counters and latency histograms here "
+                            "(Prometheus text, or JSON when PATH ends in .json)")
 
 
 def _add_gate_flags(parser: argparse.ArgumentParser) -> None:
@@ -312,7 +318,21 @@ def _finish(result: ReviewResult, engine: str, args: argparse.Namespace,
     if written and not args.quiet:
         print("\nreports: " + "\n         ".join(written))
     _print_errors(result)
+    _dump_metrics(args)
     return _gate(result, settings)
+
+
+def _dump_metrics(args: argparse.Namespace) -> None:
+    """Write the telemetry registry when --metrics-out was given."""
+    path = getattr(args, "metrics_out", None)
+    if not path:
+        return
+    try:
+        written = write_metrics(path)
+    except OSError as exc:
+        raise InputError(f"cannot write metrics: {exc}", path=path) from exc
+    if not args.quiet:
+        print(f"metrics: {written}")
 
 
 # --------------------------------------------------------------------------
@@ -433,6 +453,31 @@ def cmd_cache(args: argparse.Namespace) -> int:
         with AnalysisCache(path, AnalyzerConfig()) as cache:
             print(f"pruned {cache.prune(args.prune)} row(s)")
     print(text_table(["key", "value"], sorted(summary.items())))
+    return EXIT_OK
+
+
+def cmd_health(args: argparse.Namespace) -> int:
+    """Run the liveness or readiness probe and exit non-zero when it fails.
+
+    This is what the container's HEALTHCHECK runs, and what a CI job can call
+    before spending ten minutes on a monorepo. Exit 3 rather than 1: a failing
+    probe means the install or the environment is broken, not that the analyzer
+    found something.
+    """
+    payload = health_report(root=os.path.abspath(args.path),
+                            cache_path=args.cache_path, probe=args.probe)
+    if args.json:
+        json.dump(payload, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+    else:
+        print(text_table(["check", "status", "detail"],
+                         [[c["name"], c["status"], c["detail"][:70]]
+                          for c in payload["checks"]]))
+        print(f"\n{payload['probe']}: {payload['status']} "
+              f"(codesentry {payload['version']}, analyzer {payload['analyzer_version']})")
+    if payload["failed"]:
+        print("failed: " + ", ".join(payload["failed"]), file=sys.stderr)
+        return EXIT_INTERNAL
     return EXIT_OK
 
 
@@ -594,6 +639,14 @@ def build_parser() -> argparse.ArgumentParser:
                        help="keep at most KEEP entries per file")
     cache.set_defaults(func=cmd_cache)
 
+    health = sub.add_parser("health", help="liveness/readiness probe")
+    health.add_argument("path", nargs="?", default=".")
+    health.add_argument("--probe", choices=("liveness", "readiness"),
+                        default="readiness")
+    health.add_argument("--cache-path", default=None)
+    health.add_argument("--json", action="store_true")
+    health.set_defaults(func=cmd_health)
+
     demo = sub.add_parser("demo", help="generate the corpus, review it and score")
     demo.add_argument("--out", default=None)
     _add_engine_flags(demo)
@@ -612,6 +665,7 @@ def main(argv: list[str] | None = None) -> int:
     """Parse arguments, run the command, and map failures onto exit codes."""
     args = build_parser().parse_args(argv)
     run_id = configure_logging(args.log_level, args.log_format)
+    declare()
     try:
         return args.func(args)
     except CodeSentryError as exc:
