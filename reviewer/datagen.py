@@ -51,10 +51,6 @@ class DemoManifest:
     plants: list[Plant] = field(default_factory=list)
     clean_files: tuple[str, ...] = ()
 
-    def plants_for(self, file: str) -> list[Plant]:
-        """Planted defects belonging to one file."""
-        return [p for p in self.plants if p.file == file]
-
     def to_dict(self) -> dict:
         """Return a JSON-serialisable view."""
         return {"root": self.root, "clean_files": list(self.clean_files),
@@ -565,12 +561,8 @@ def build_manifest(root: str, head: bool = False) -> DemoManifest:
     return DemoManifest(root=root, files=files, plants=plants, clean_files=BENIGN_FILES)
 
 
-def write_demo_repo(root: str, head: bool = False, seed: int = 42) -> DemoManifest:
-    """Materialise the demo repo under `root` and drop a manifest.json beside it.
-
-    `seed` is accepted for interface symmetry with the rest of the portfolio; the
-    generator is fully deterministic, so the same bytes are written every run.
-    """
+def write_demo_repo(root: str, head: bool = False) -> DemoManifest:
+    """Materialise the demo repo under `root` and drop a manifest.json beside it."""
     manifest = build_manifest(root, head=head)
     for rel, text in manifest.files.items():
         dest = os.path.join(root, rel.replace("/", os.sep))
@@ -582,9 +574,9 @@ def write_demo_repo(root: str, head: bool = False, seed: int = 42) -> DemoManife
     return manifest
 
 
-def write_demo_pair(base_dir: str, seed: int = 42) -> tuple[DemoManifest, DemoManifest]:
+def write_demo_pair(base_dir: str) -> tuple[DemoManifest, DemoManifest]:
     """Write both repo versions (`base/` and `head/`) used by the diff-aware demo."""
     base_root = os.path.join(base_dir, "base")
     head_root = os.path.join(base_dir, "head")
-    return (write_demo_repo(base_root, head=False, seed=seed),
-            write_demo_repo(head_root, head=True, seed=seed))
+    return (write_demo_repo(base_root, head=False),
+            write_demo_repo(head_root, head=True))

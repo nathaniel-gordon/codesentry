@@ -118,17 +118,6 @@ def parse_unified_diff(text: str) -> tuple[dict[str, set[int]], DiffStat]:
     return changed, DiffStat(len(changed), total_added, ())
 
 
-def unified_text(base_root: str, head_root: str, rel: str) -> str:
-    """Render a unified diff for one file (used in the markdown report)."""
-    base_path = os.path.join(base_root, rel.replace("/", os.sep))
-    head_path = os.path.join(head_root, rel.replace("/", os.sep))
-    base_lines = _read(base_path) if os.path.exists(base_path) else []
-    head_lines = _read(head_path) if os.path.exists(head_path) else []
-    return "\n".join(difflib.unified_diff(base_lines, head_lines,
-                                          fromfile=f"a/{rel}", tofile=f"b/{rel}",
-                                          lineterm="", n=2))
-
-
 def filter_findings(findings: list[Finding], changed: dict[str, set[int]],
                     metrics: dict[str, ModuleMetrics] | None = None,
                     scope: str = "line", context: int = 0) -> list[Finding]:

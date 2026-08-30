@@ -1,7 +1,7 @@
 """Optional LLM layer: Claude API when credentials exist, deterministic fallback otherwise.
 
-Canonical template — copied into agentic/RAG projects. Projects supply their own
-task-specific offline fallbacks; this module only abstracts the live client.
+Only used by `--mode agent --planner llm`. Without credentials the caller falls
+back to the deterministic policy, so nothing here is on the default path.
 """
 from __future__ import annotations
 

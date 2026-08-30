@@ -25,6 +25,7 @@ import sqlite3
 import time
 from dataclasses import dataclass
 
+from . import __version__
 from .analyzers import AnalyzerConfig, Finding
 from .duplication import CodeBlock
 from .errors import CacheError
@@ -33,8 +34,11 @@ from .metrics import FunctionMetrics, ModuleMetrics
 
 log = get_logger("cache")
 
-#: Bumped whenever a rule's behaviour changes, which invalidates every entry.
-ANALYZER_VERSION = "3"
+#: Bumped whenever a rule's behaviour changes within one release. Combined with
+#: the package version it forms the analyzer half of the cache key, so both a
+#: release upgrade and an in-place rule fix invalidate every stored entry.
+RULE_REVISION = 4
+ANALYZER_VERSION = f"{__version__}+r{RULE_REVISION}"
 
 DEFAULT_CACHE_DIRNAME = ".codesentry-cache"
 DEFAULT_CACHE_FILENAME = "cache.db"

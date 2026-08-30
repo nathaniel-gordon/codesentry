@@ -440,11 +440,16 @@ def cmd_demo(args: argparse.Namespace) -> int:
     _print_result(diff_result, engine, "DIFF-AWARE REVIEW (base -> head)")
     introduced = {p.key for p in head_manifest.plants if p.introduced}
     reported = {f.key for f in diff_result.findings}
-    preexisting = [p for p in head_manifest.plants if not p.introduced]
+    # Only plants inside the files the diff actually touched test suppression.
+    # Counting the whole corpus would credit the tool for staying silent about
+    # files it never opened.
+    touched = set(diff_result.metrics)
+    in_scope = [p for p in head_manifest.plants
+                if not p.introduced and p.file in touched]
     print(f"defects introduced by the change: {len(introduced)}; "
           f"reported on changed lines: {len(introduced & reported)}; "
-          f"pre-existing defects not re-reported: "
-          f"{sum(1 for p in preexisting if p.key not in reported)}/{len(preexisting)}")
+          f"pre-existing defects in the changed files, not re-reported: "
+          f"{sum(1 for p in in_scope if p.key not in reported)}/{len(in_scope)}")
     write_reports(diff_result, out_dir, "diff_review", title="Diff-aware review")
     with open(os.path.join(out_dir, "evaluation.json"), "w", encoding="utf-8") as fh:
         json.dump(report.to_dict(), fh, indent=2)

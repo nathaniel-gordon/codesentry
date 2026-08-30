@@ -21,6 +21,7 @@ import json
 import os
 from typing import Any
 
+from . import __version__
 from .analyzers import RULES, Finding, RuleSpec
 from .review import ReviewResult
 
@@ -102,7 +103,7 @@ def _result(finding: Finding, index: dict[str, int]) -> dict[str, Any]:
     return entry
 
 
-def render_sarif(result: ReviewResult, version: str = "0.3.0") -> dict[str, Any]:
+def render_sarif(result: ReviewResult, version: str = __version__) -> dict[str, Any]:
     """Build the SARIF log for one review as a plain dict."""
     descriptors, index = _driver_rules()
     notifications = [{
@@ -138,7 +139,7 @@ def render_sarif(result: ReviewResult, version: str = "0.3.0") -> dict[str, Any]
     }
 
 
-def write_sarif(result: ReviewResult, path: str, version: str = "0.3.0") -> str:
+def write_sarif(result: ReviewResult, path: str, version: str = __version__) -> str:
     """Write the SARIF log to `path`; returns the absolute path."""
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
