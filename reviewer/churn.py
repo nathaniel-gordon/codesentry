@@ -56,8 +56,13 @@ def git_churn(root: str, max_commits: int = 400, timeout: float = 20.0) -> dict[
     git = shutil.which("git")
     if git is None:
         return {}
-    cmd = [git, "-C", root, "log", f"-n{max_commits}", "--numstat",
-           "--pretty=format:", "--no-renames"]
+    # The reviewed repository is untrusted: git reads its .git/config, and keys
+    # such as core.fsmonitor and core.pager name programs git will run. Both are
+    # pinned here so pointing the tool at a hostile checkout cannot execute
+    # anything, and alias/hook expansion has nothing to latch onto.
+    cmd = [git, "-c", "core.fsmonitor=false", "-c", "core.pager=cat",
+           "-c", "core.hooksPath=/dev/null", "-C", root, "log",
+           f"-n{max_commits}", "--numstat", "--pretty=format:", "--no-renames"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                               check=False)
