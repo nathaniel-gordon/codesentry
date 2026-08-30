@@ -1,7 +1,12 @@
-"""Agent core: tool registry + plan/act/observe loop with full trace.
+"""Agent core: tool registry + plan/act/observe loop with a full trace.
 
-Canonical template — copied into agentic projects. Works with a live LLM planner
-(Claude) or a deterministic rule-based policy supplied by the project.
+Drives either the deterministic policy in `agent.py` or a live Claude planner.
+
+The loop treats *expected* tool failures - a typed `CodeSentryError` such as a
+bad regex or a file that will not parse - as observations, because a planner
+should be able to see them and try something else. Everything else propagates.
+Catching bare `Exception` here is what previously turned an analyzer crash into
+a line of trace text and let the run exit 0 reporting no findings.
 """
 from __future__ import annotations
 
@@ -10,35 +15,47 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from .errors import CodeSentryError
+
 
 @dataclass
 class Tool:
+    """One callable the planner can invoke, with its parameter documentation."""
+
     name: str
     description: str
     handler: Callable[..., Any]
     params: dict[str, str] = field(default_factory=dict)  # name -> description
 
     def spec(self) -> str:
+        """One catalog line: name, parameters and description."""
         ps = ", ".join(f"{k}: {v}" for k, v in self.params.items()) or "no parameters"
         return f"- {self.name}({ps}): {self.description}"
 
 
 class ToolRegistry:
+    """Name -> Tool lookup, plus the catalog block a planner prompt needs."""
+
     def __init__(self) -> None:
         self._tools: dict[str, Tool] = {}
 
     def register(self, tool: Tool) -> None:
+        """Add a tool, replacing any tool already registered under its name."""
         self._tools[tool.name] = tool
 
     def get(self, name: str) -> Tool | None:
+        """Look a tool up by name, or None when it is not registered."""
         return self._tools.get(name)
 
     def catalog(self) -> str:
+        """Every registered tool as one prompt-ready block."""
         return "\n".join(t.spec() for t in self._tools.values())
 
 
 @dataclass
 class Step:
+    """One plan/act/observe cycle, kept for the trace."""
+
     n: int
     thought: str
     action: str
@@ -63,9 +80,12 @@ class Agent:
         self.policy = policy
         self.max_steps = max_steps
         self.trace: list[Step] = []
+        self.errors: list[str] = []
 
     def run(self, goal: str) -> str:
+        """Drive the policy until it finishes or runs out of steps."""
         self.trace = []
+        self.errors = []
         for n in range(1, self.max_steps + 1):
             decision = self.policy(goal, self.trace, self.registry)
             action = decision.get("action", "finish")
@@ -79,16 +99,26 @@ class Agent:
             t0 = time.perf_counter()
             if tool is None:
                 obs = f"ERROR: unknown tool '{action}'"
+                self.errors.append(obs)
             else:
                 try:
                     obs = str(tool.handler(**action_input))
-                except Exception as exc:  # tool errors are observations, not crashes
-                    obs = f"ERROR: {type(exc).__name__}: {exc}"
+                except CodeSentryError as exc:
+                    # A typed failure the planner is allowed to react to. It is
+                    # still an error: recorded here and, for analyzer failures,
+                    # on the session, so the run cannot exit 0.
+                    obs = f"ERROR: {exc.code}: {exc}"
+                    self.errors.append(obs)
+                except TypeError as exc:
+                    # Wrong argument names from a planner, not a tool bug.
+                    obs = f"ERROR: bad tool arguments: {exc}"
+                    self.errors.append(obs)
             self.trace.append(Step(n, thought, action, action_input,
                                    obs, (time.perf_counter() - t0) * 1000))
         return "max steps reached without finish"
 
     def trace_report(self) -> str:
+        """Render the run as readable text for the report and the trace file."""
         lines = [f"=== Agent trace: {self.name} ({len(self.trace)} steps) ==="]
         for s in self.trace:
             lines.append(f"[{s.n}] {s.action} {json.dumps(s.action_input, default=str)[:120]}")

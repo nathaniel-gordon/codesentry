@@ -14,18 +14,15 @@ Two planners are available and both drive the identical tool surface:
 """
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass
 
 from .agent_core import Agent, Step, Tool, ToolRegistry, llm_policy_factory
 from .analyzers import SEVERITY_ORDER
-from .review import ReviewSession
+from .errors import ToolInputError
+from .review import SECRET_SCAN_RE, ReviewSession
+from .textscan import search_text_files
 
-SECRET_SCAN_RE = (r"(?i)\w*(?:secret|api[_-]?key|password|passwd|token)\w*"
-                  r"\s*[:=]\s*[\"']?[A-Za-z0-9+/_\-]{12,}")
-TEXT_SUFFIXES = (".ini", ".cfg", ".conf", ".env", ".toml", ".yaml", ".yml",
-                 ".json", ".properties", ".txt")
 SYSTEM_PROMPT = (
     "You are a senior Python code reviewer. Investigate the repository with the "
     "tools until every file has been analyzed, clones have been scanned, "
@@ -51,7 +48,7 @@ class AgentTools:
     def analyze_file(self, path: str) -> str:
         """Run the four analyzer passes over one file."""
         if path not in self.session.files:
-            return f"ERROR: '{path}' is not in scope"
+            raise ToolInputError("path is not in review scope", path=str(path)[:200])
         produced = self.session.analyze_file(path)
         counts: dict[str, int] = {}
         for finding in produced:
@@ -66,13 +63,17 @@ class AgentTools:
 
     def complexity_report(self, top: int = 5) -> str:
         """Rank the analyzed functions by cyclomatic complexity."""
+        try:
+            limit = min(200, max(1, int(top)))
+        except (TypeError, ValueError) as exc:
+            raise ToolInputError("top must be an integer", top=repr(top)) from exc
         fns = [fn for m in self.session.metrics.values() for fn in m.functions]
         if not fns:
             return "no functions analyzed yet"
         fns.sort(key=lambda f: (-f.complexity, f.file, f.line))
         rows = [f"{f.file}:{f.line} {f.name} cc={f.complexity} "
                 f"nesting={f.nesting} len={f.length} params={f.params}"
-                for f in fns[:max(1, int(top))]]
+                for f in fns[:limit]]
         worst_module = max(self.session.metrics.values(),
                            key=lambda m: (m.coupling, m.file))
         return ("worst functions:\n" + "\n".join(rows)
@@ -89,29 +90,18 @@ class AgentTools:
                            f"({p.similarity:.0%})" for p in pairs[:5])
         return f"{len(pairs)} duplicate pair(s), {added} finding(s) recorded: {listed}"
 
-    def search_pattern(self, pattern: str, include: str = "text") -> str:
-        """Regex-search the repository, including files the AST passes cannot read."""
-        try:
-            rx = re.compile(pattern)
-        except re.error as exc:
-            return f"ERROR: bad regex: {exc}"
-        hits: list[str] = []
-        for rel in self._candidate_files(include):
-            path = os.path.join(self.session.root, rel.replace("/", os.sep))
-            try:
-                with open(path, "r", encoding="utf-8", errors="replace") as handle:
-                    for lineno, line in enumerate(handle, 1):
-                        if rx.search(line):
-                            hits.append(f"{rel}:{lineno}:{line.strip()[:120]}")
-                            if len(hits) >= self.max_hits:
-                                break
-            except OSError:
-                continue
-            if len(hits) >= self.max_hits:
-                break
+    def search_pattern(self, pattern: str) -> str:
+        """Regex-search the repository's text files, which no AST pass can read.
+
+        The pattern is validated and the scan is bounded (see `textscan`);
+        `ToolInputError` propagates so the loop records it as a real error
+        rather than a plain observation.
+        """
+        hits = search_text_files(self.session.root, pattern, max_hits=self.max_hits)
         if not hits:
             return "0 matches"
-        return f"{len(hits)} matches:\n" + "\n".join(hits)
+        listed = "\n".join(f"{h.file}:{h.line}:{h.text}" for h in hits)
+        return f"{len(hits)} matches:\n{listed}"
 
     def record_finding(self, file: str, line: int, rule: str, message: str,
                        suggestion: str, severity: str = "", category: str = "",
@@ -121,23 +111,6 @@ class AgentTools:
                                     severity, category, why)
         return (f"recorded {rule} at {file}:{line}" if added
                 else f"duplicate finding ignored at {file}:{line}")
-
-    # -- helpers -----------------------------------------------------------
-    def _candidate_files(self, include: str) -> list[str]:
-        skip_dirs = {".git", "__pycache__", "output", ".venv", "node_modules"}
-        out: list[str] = []
-        for dirpath, dirnames, filenames in os.walk(self.session.root):
-            dirnames[:] = sorted(d for d in dirnames if d not in skip_dirs)
-            for name in sorted(filenames):
-                rel = os.path.relpath(os.path.join(dirpath, name),
-                                      self.session.root).replace(os.sep, "/")
-                if include == "python" and name.endswith(".py"):
-                    out.append(rel)
-                elif include == "text" and name.endswith(TEXT_SUFFIXES):
-                    out.append(rel)
-                elif include == "all":
-                    out.append(rel)
-        return out
 
     def registry(self) -> ToolRegistry:
         """Build the registry the Agent loop calls into."""
@@ -155,9 +128,8 @@ class AgentTools:
                           "detect copy-pasted functions across analyzed files",
                           self.duplicate_scan, {}))
         reg.register(Tool("search_pattern",
-                          "regex search over repo files (include=text|python|all)",
-                          self.search_pattern,
-                          {"pattern": "regex", "include": "text|python|all"}))
+                          "regex search over the repo's config/text files",
+                          self.search_pattern, {"pattern": "regex"}))
         reg.register(Tool("record_finding", "store a finding the agent derived itself",
                           self.record_finding,
                           {"file": "path", "line": "line number", "rule": "rule id",
@@ -204,7 +176,7 @@ def deterministic_policy(session: ReviewSession):
             return {"thought": "AST passes only see Python; search config files for "
                               "credentials they cannot reach.",
                     "action": "search_pattern",
-                    "action_input": {"pattern": SECRET_SCAN_RE, "include": "text"}}
+                    "action_input": {"pattern": SECRET_SCAN_RE}}
         recorded = {(s.action_input.get("file"), int(s.action_input.get("line", 0)))
                     for s in history if s.action == "record_finding"}
         for step in history:
