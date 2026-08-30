@@ -98,6 +98,13 @@ $ docker run --rm --entrypoint sh codesentry:0.3.0 -c 'id'
 uid=10001(sentry) gid=10001(sentry) groups=10001(sentry)
 
 $ docker run --rm codesentry:0.3.0 health --probe liveness
+check            status  detail
+---------------  ------  -------------------------------------------
+python           ok      3.12.14
+rule-table       ok      30 rules in 4 packs
+rule-packs       ok      every rule is in exactly one pack
+rule-vocabulary  ok      severities and categories are in vocabulary
+
 liveness: ok (codesentry 0.3.0, analyzer 0.3.0+r4)
 ```
 
