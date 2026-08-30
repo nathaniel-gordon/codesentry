@@ -228,6 +228,10 @@ def _print_errors(result: ReviewResult) -> None:
 def _emit(result: ReviewResult, args: argparse.Namespace, title: str) -> list[str]:
     """Write (or print) the requested formats; returns the paths written."""
     formats = tuple(dict.fromkeys(args.format or ("md", "json")))
+    if args.stdout and args.quiet and result.ok and not result.findings:
+        # A pre-commit hook should print nothing when it passes. --quiet with
+        # --stdout means "only speak when there is something to say".
+        return []
     if args.stdout:
         from .report import render_markdown
         from .sarif import render_sarif

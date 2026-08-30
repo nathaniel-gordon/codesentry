@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: tests
+        run: python -m pytest tests -q --cov=reviewer --cov-report=term
+      - name: ruff
+        run: python -m ruff check reviewer tests
+      - name: mypy
+        run: python -m mypy reviewer
+      - name: demo and per-rule evaluation
+        run: |
+          codesentry demo
+          codesentry eval
+
+  self-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - name: analyze this repository with itself
+        run: codesentry review reviewer --format sarif --out sarif-out --fail-on-severity high
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: sarif-out/review.sarif
+          category: codesentry

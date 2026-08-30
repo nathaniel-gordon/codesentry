@@ -1,0 +1,58 @@
+name: codesentry
+description: Run the codesentry static analyzer and upload its SARIF to code scanning.
+author: Nathaniel Gordon
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  paths:
+    description: Files or directories to analyze, space separated.
+    required: false
+    default: "."
+  fail-on-severity:
+    description: Exit non-zero when a finding at or above this severity remains (critical, high, medium, low). Empty disables the gate.
+    required: false
+    default: high
+  pack:
+    description: Restrict the run to one rule pack (security, correctness, complexity, maintainability). Empty runs them all.
+    required: false
+    default: ""
+  baseline:
+    description: Path to a baseline file produced by `codesentry baseline`.
+    required: false
+    default: ""
+  upload-sarif:
+    description: Upload the SARIF log to GitHub code scanning.
+    required: false
+    default: "true"
+
+outputs:
+  sarif-file:
+    description: Path of the SARIF log this action wrote.
+    value: ${{ steps.analyze.outputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: install codesentry
+      shell: bash
+      run: python -m pip install --disable-pip-version-check "${{ github.action_path }}"
+
+    - name: analyze
+      id: analyze
+      shell: bash
+      run: |
+        args=(review ${{ inputs.paths }} --format sarif --out "$RUNNER_TEMP/codesentry" --quiet)
+        [ -n "${{ inputs.fail-on-severity }}" ] && args+=(--fail-on-severity "${{ inputs.fail-on-severity }}")
+        [ -n "${{ inputs.pack }}" ] && args+=(--pack "${{ inputs.pack }}")
+        [ -n "${{ inputs.baseline }}" ] && args+=(--baseline "${{ inputs.baseline }}")
+        echo "sarif-file=$RUNNER_TEMP/codesentry/review.sarif" >> "$GITHUB_OUTPUT"
+        codesentry "${args[@]}"
+
+    - name: upload sarif
+      if: always() && inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.analyze.outputs.sarif-file }}
+        category: codesentry
