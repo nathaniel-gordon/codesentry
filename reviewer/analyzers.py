@@ -550,8 +550,16 @@ class _ModuleAnalysis:
                          "yaml.load() without SafeLoader can construct any Python object",
                          "call yaml.safe_load(), or pass Loader=yaml.SafeLoader")
         if dotted in ("hashlib.md5", "hashlib.sha1"):
-            self.add(node, "weak-hash", f"{dotted}() is a broken hash function",
-                     "use hashlib.sha256, or hmac/scrypt for secrets")
+            # usedforsecurity=False is the caller stating, in the API's own
+            # vocabulary, that this is a cache key or an ETag. Reporting it is a
+            # false positive on the one construct that exists to prevent one.
+            declared_non_security = any(
+                kw.arg == "usedforsecurity" and isinstance(kw.value, ast.Constant)
+                and kw.value.value is False for kw in node.keywords)
+            if not declared_non_security:
+                self.add(node, "weak-hash", f"{dotted}() is a broken hash function",
+                         "use hashlib.sha256, or pass usedforsecurity=False when "
+                         "the digest is not a security control")
         if name in ("execute", "executemany", "executescript") and node.args:
             if self._is_built_sql(node.args[0]) and self._mentions_sql(node.args[0]):
                 self.add(node, "sql-injection",
