@@ -88,6 +88,7 @@ def _gateway(_head: bool) -> _File:
     f = _File("payments/gateway.py")
     f.emit('''
         """Card charging and payout helpers for the billing service."""
+        import hashlib
         import os
         import pickle
         import subprocess
@@ -133,6 +134,16 @@ def _gateway(_head: bool) -> _File:
         def load_session(blob):
             """Restore a checkout session from its cached representation."""
             return pickle.loads(blob)
+
+
+        def signature(payload):
+            """Sign a webhook payload so the receiver can verify its origin."""
+            return hashlib.md5(payload.encode("utf-8")).hexdigest()
+
+
+        def describe_charge(customer_id, amount_cents, currency, reference, operator):
+            """Build the human-readable audit line stored beside the charge row."""
+            return f"charge {reference} for customer {customer_id}: {amount_cents} {currency} authorised by {operator}"
     ''', (
         ("sql-injection", 'sql = "INSERT'),
         ("sql-injection", "DELETE FROM charges"),
@@ -140,7 +151,22 @@ def _gateway(_head: bool) -> _File:
         ("shell-true", "shell=True"),
         ("os-system", "os.system("),
         ("unsafe-deserialization", "pickle.loads("),
+        ("weak-hash", "hashlib.md5("),
+        ("long-line", "authorised by {operator}"),
     ))
+    return f
+
+
+def _broken(_head: bool) -> _File:
+    """A module that does not parse, so the syntax-error rule has ground truth."""
+    f = _File("inventory/legacy_import.py")
+    f.emit('''
+        """Historic importer kept for the yearly reconciliation run."""
+
+
+        def load_rows(path)
+            return open(path).readlines()
+    ''', (("syntax-error", "def load_rows(path)"),))
     return f
 
 
@@ -520,7 +546,7 @@ _PACKAGE_DOCS = {
 }
 
 _BUILDERS = (_gateway, _validation, _stock, _reporting, _legacy, _helpers,
-             _config, _models)
+             _config, _models, _broken)
 
 #: Ordinary application code written to be defect-free.
 CLEAN_FILES = ("core/config.py", "core/models.py", "utils/helpers.py",
