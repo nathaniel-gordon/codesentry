@@ -225,7 +225,7 @@ asserting exactly that.
 ## Development
 
 ```bash
-python -m pytest tests -q --cov=reviewer   # 135 tests, ~90% line coverage, floor 75%
+python -m pytest tests -q --cov=reviewer   # 137 tests, 90% line coverage, floor 75%
 python -m ruff check reviewer tests        # clean
 python -m mypy reviewer                    # clean
 codesentry review reviewer                 # the tool on itself
