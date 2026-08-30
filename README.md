@@ -255,10 +255,11 @@ low       10
 By rule: `high-complexity` 13, `too-many-params` 6, `long-function` 4,
 `deep-nesting` 3, `duplicate-block` 2, `long-line` 2, `todo-marker` 2.
 
-CI gates this at `--fail-on-severity high`, which passes because nothing here
-reaches high. Most of the remainder is `high-complexity` on the analyzer's own
-AST dispatch functions - long `isinstance` chains where splitting them to satisfy
-the metric would make them harder to read. They stand, and the tool reports them.
+The CI workflow gates this at `--fail-on-severity high`. Run here, the gate
+passes, because nothing in this tree reaches high. Most of the remainder is
+`high-complexity` on the analyzer's own AST dispatch functions - long
+`isinstance` chains where splitting them to satisfy the metric would make them
+harder to read. They stand, and the tool reports them.
 
 ## Local development
 

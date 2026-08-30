@@ -64,7 +64,8 @@ under `--mode agent --planner llm`.
 ## What is verified, and how
 
 Each hardening item above has a regression test named after what it prevents, in
-`tests/test_hardening.py` and `tests/test_security_regressions.py`. They run in
-CI on every push. That is the extent of the assurance: there has been no external
-audit, no fuzzing campaign and no penetration test, and this software is not
-deployed anywhere.
+`tests/test_hardening.py` and `tests/test_security_regressions.py`. They are wired
+into `.github/workflows/ci.yml`, which has never actually run - nothing has been
+pushed - so what backs them today is a local `python -m pytest tests`. That is the
+extent of the assurance: there has been no external audit, no fuzzing campaign and
+no penetration test, and this software is not deployed anywhere.

@@ -35,9 +35,9 @@ docker build -t codesentry:dev .
 Coverage has a floor of 75% (`[tool.coverage.report] fail_under`), and the suite
 sits well above it. Do not lower the floor to make a change pass.
 
-The self-review is gated in CI. If your change makes the analyzer report a new
-`high` or `critical` finding on this repository's own code, fix the code rather
-than the gate.
+The self-review is a gate in the CI workflow. If your change makes the analyzer
+report a new `high` or `critical` finding on this repository's own code, fix the
+code rather than the gate.
 
 ## Architecture
 
