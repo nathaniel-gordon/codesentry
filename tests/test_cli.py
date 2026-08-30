@@ -249,3 +249,11 @@ def test_unwritable_report_dir_is_a_typed_error_not_a_traceback(project, tmp_pat
     monkeypatch.chdir(tmp_path)
     assert run("review", str(project / "clean.py"), "--no-cache", "--quiet") == EXIT_USAGE
 
+
+def test_unwritable_cache_dir_is_a_typed_error_not_a_traceback(project, tmp_path):
+    """Exit 3, because a cache the tool cannot open is the tool failing."""
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory\n", encoding="utf-8")
+    assert run("review", str(project / "clean.py"), "--quiet",
+               "--out", str(tmp_path / "reports"),
+               "--cache-path", str(blocker / "sub" / "cache.db")) == EXIT_INTERNAL

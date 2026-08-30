@@ -164,7 +164,11 @@ class AnalysisCache:
         self.config_sha = config_fingerprint(config)
         self.analyzer_version = analyzer_version
         self.stats = CacheStats()
-        os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
+        try:
+            os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
+        except OSError as exc:
+            raise CacheError(f"cannot create the cache directory: {exc}",
+                             path=self.path) from exc
         try:
             self._conn = sqlite3.connect(self.path)
             self._conn.row_factory = sqlite3.Row
