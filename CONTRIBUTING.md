@@ -44,9 +44,13 @@ code rather than the gate.
 ```
 reviewer/
   __main__.py     CLI: argument plumbing, the exit-code contract, output
+  errors.py       the error taxonomy the exit codes are derived from
+  logging_setup.py  structured logging and the per-run correlation id
   pipeline.py     review_repo / review_diff / review_patch - the shared entry points
+  diffing.py      file discovery and unified-diff parsing
   scan.py         the direct execution path: analyze, clone-detect, secret-scan
-  agent.py        the optional plan/act/observe loop over the same tools
+  agent.py / agent_core.py   the optional plan/act/observe loop over the same tools
+  llm.py          the optional Claude planner behind --planner llm
   review.py       ReviewSession: loading, per-file analysis, ranking, health
   analyzers.py    the rule table and the four AST passes
   metrics.py      complexity/size measurements of the code being reviewed
