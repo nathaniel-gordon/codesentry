@@ -2,14 +2,16 @@
   "name": "codesentry",
   "category": "Developer tooling / static analysis",
   "architecture": "layered AST analyzer: rule table + four passes + sqlite result cache + markdown/JSON/SARIF reporters",
-  "interface": "codesentry CLI (8 subcommands) + pre-commit hook + composite GitHub Action",
-  "testing": "planted-defect corpus with an adversarial negative set, plus unit and CLI tests",
+  "interface": "codesentry CLI (10 subcommands) + pre-commit hook + composite GitHub Action + container image",
+  "testing": "planted-defect corpus with an adversarial negative set, plus unit, CLI, subprocess integration, migration, invariant and security-regression tests",
   "demo_cmd": "python -m reviewer demo",
   "eval_cmd": "python -m reviewer eval",
   "test_cmd": "python -m pytest tests -q",
+  "health_cmd": "python -m reviewer health --json",
   "entry_points": [
     "reviewer/__main__.py",
     ".pre-commit-hooks.yaml",
-    "action.yml"
+    "action.yml",
+    "Dockerfile"
   ]
 }
