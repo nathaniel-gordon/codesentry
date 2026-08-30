@@ -47,6 +47,33 @@ class ChurnModel:
                 "raw": {k: round(v, 2) for k, v in sorted(self.raw.items())}}
 
 
+#: git config keys that name a program git will run. The reviewed repository is
+#: untrusted and git reads its .git/config, so all three are pinned on the
+#: command line where the repository's own config cannot win.
+_PINS = ("-c", "core.fsmonitor=false", "-c", "core.pager=cat",
+         "-c", "core.hooksPath=/dev/null")
+
+
+def repo_prefix(git: str, root: str, timeout: float = 10.0) -> str:
+    """Where `root` sits inside its repository, as a trailing-slash prefix.
+
+    `git log --numstat` prints paths relative to the repository root, not to
+    `-C`. Reviewing a subdirectory therefore produced churn keyed on
+    `pkg/mod.py` while the review keys on `mod.py`, nothing matched, and the
+    model silently fell back to the static proxy. Returns "" at the top of a
+    repository, or when the question cannot be answered.
+    """
+    cmd = [git, *_PINS, "-C", root, "rev-parse", "--show-prefix"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                              check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return proc.stdout.strip().replace("\\", "/")
+
+
 def git_churn(root: str, max_commits: int = 400, timeout: float = 20.0) -> dict[str, float]:
     """Added+deleted lines per file from git history; {} when unavailable.
 
@@ -56,12 +83,7 @@ def git_churn(root: str, max_commits: int = 400, timeout: float = 20.0) -> dict[
     git = shutil.which("git")
     if git is None:
         return {}
-    # The reviewed repository is untrusted: git reads its .git/config, and keys
-    # such as core.fsmonitor and core.pager name programs git will run. Both are
-    # pinned here so pointing the tool at a hostile checkout cannot execute
-    # anything, and alias/hook expansion has nothing to latch onto.
-    cmd = [git, "-c", "core.fsmonitor=false", "-c", "core.pager=cat",
-           "-c", "core.hooksPath=/dev/null", "-C", root, "log",
+    cmd = [git, *_PINS, "-C", root, "log",
            f"-n{max_commits}", "--numstat", "--pretty=format:", "--no-renames"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
@@ -83,6 +105,9 @@ def git_churn(root: str, max_commits: int = 400, timeout: float = 20.0) -> dict[
         except ValueError:
             continue  # binary files report '-'
         churn[path.replace("\\", "/")] = churn.get(path.replace("\\", "/"), 0.0) + total
+    prefix = repo_prefix(git, root)
+    if prefix:
+        churn = {p[len(prefix):]: v for p, v in churn.items() if p.startswith(prefix)}
     return churn
 
 
