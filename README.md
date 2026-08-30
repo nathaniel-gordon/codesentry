@@ -240,7 +240,7 @@ About 100 ms of each figure is interpreter start-up, measured as
 
 ```
 $ codesentry review reviewer --no-cache
-engine=direct  files=27  sloc=5271  churn=git-log  findings=32  cache=0h/27m
+engine=direct  files=27  sloc=5285  churn=git-log  findings=32  cache=0h/27m
 health score: 93.8/100 (grade A)
 severity  count
 --------  -----
@@ -285,14 +285,14 @@ the commit conventions.
 
 ```
 $ python -m pytest tests --cov=reviewer --cov-report=term
-TOTAL                        2950    201    904     95    92%
-Required test coverage of 75.0% reached. Total coverage: 91.70%
-410 passed, 4 warnings in 15.05s
+TOTAL                        2959    203    904     95    92%
+Required test coverage of 75.0% reached. Total coverage: 91.66%
+413 passed, 4 warnings in 14.91s
 ```
 
-410 tests, 91.7% combined line and branch coverage, floor 75%
+413 tests, 91.7% combined line and branch coverage, floor 75%
 (`[tool.coverage.report] fail_under`). 149 of those are parametrized cases in
-`test_invariants.py`, so the count is not 410 independent scenarios - it is
+`test_invariants.py`, so the count is not 413 independent scenarios - it is
 seventeen files' worth of behaviour, some of it swept over generated inputs.
 
 | file | what it covers |
