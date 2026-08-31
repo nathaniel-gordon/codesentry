@@ -229,12 +229,13 @@ wall clock around the whole subprocess:
 
 ```
 $ codesentry review <python>/Lib/asyncio --cache-path bench.db --quiet --stdout --format json
-cold  2035 / 2042 / 2093 ms      (cache deleted before each run)
-warm   579 /  586 /  580 ms
+cold  2469 / 2582 / 3199 ms      (cache deleted before each run)
+warm   685 /  718 /  736 ms
 ```
 
-About 100 ms of each figure is interpreter start-up, measured as
-`python -c "pass"` under the same subprocess harness (103 / 99 / 96 ms).
+Roughly 130 ms of each figure is interpreter start-up, measured as
+`python -c "pass"` under the same subprocess harness (128 / 135 / 159 ms).
+The spread between runs is real; this machine was doing other things.
 `--no-cache` bypasses the cache, `--clear-cache` deletes it, and
 `codesentry cache <path>` reports on it.
 
@@ -242,8 +243,8 @@ About 100 ms of each figure is interpreter start-up, measured as
 
 ```
 $ codesentry review reviewer --no-cache
-engine=direct  files=27  sloc=5285  churn=git-log  findings=32  cache=0h/27m
-health score: 93.8/100 (grade A)
+engine=direct  files=27  sloc=5292  churn=git-log  findings=32  cache=0h/27m
+health score: 93.7/100 (grade A)
 severity  count
 --------  -----
 critical  0
@@ -290,7 +291,7 @@ the commit conventions.
 $ python -m pytest tests --cov=reviewer --cov-report=term
 TOTAL                        2966    205    904     95    92%
 Required test coverage of 75.0% reached. Total coverage: 91.63%
-414 passed in 15.94s
+414 passed in 15.97s
 ```
 
 414 tests, 91.6% combined line and branch coverage, floor 75%
