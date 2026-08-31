@@ -122,6 +122,45 @@ def test_a_file_that_is_not_a_database_is_a_typed_error(tmp_path):
         AnalysisCache(str(path), AnalyzerConfig())
 
 
+def test_a_failed_open_closes_its_connection(tmp_path, monkeypatch):
+    """When __init__ raises, the caller has nothing to close - we must.
+
+    Regression: init used to raise CacheError with the sqlite connection
+    still open, which surfaced as unclosed-database ResourceWarnings in
+    whatever test the garbage collector happened to run under.
+    """
+    opened = []
+    real_connect = sqlite3.connect
+
+    def tracking_connect(*args, **kwargs):
+        conn = real_connect(*args, **kwargs)
+        opened.append(conn)
+        return conn
+
+    monkeypatch.setattr("reviewer.cache.sqlite3.connect", tracking_connect)
+
+    # pragma failure: the file exists but is not a database
+    garbage = tmp_path / "garbage.db"
+    garbage.write_bytes(b"this is not sqlite" * 100)
+    with pytest.raises(CacheError):
+        AnalysisCache(str(garbage), AnalyzerConfig())
+
+    # migration refusal: schema written by a newer tool
+    newer = str(tmp_path / "newer.db")
+    with AnalysisCache(newer, AnalyzerConfig()):
+        pass
+    conn = real_connect(newer)
+    conn.execute("INSERT INTO schema_version (version, applied_at) VALUES (999, 0)")
+    conn.commit()
+    conn.close()
+    with pytest.raises(CacheError):
+        AnalysisCache(newer, AnalyzerConfig())
+
+    for tracked in opened:
+        with pytest.raises(sqlite3.ProgrammingError):
+            tracked.execute("SELECT 1")  # closed connections refuse queries
+
+
 # -- the schema the cache relies on -----------------------------------------
 def test_journal_mode_is_wal(tmp_path):
     path = str(tmp_path / "c.db")

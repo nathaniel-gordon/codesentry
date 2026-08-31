@@ -171,16 +171,27 @@ class AnalysisCache:
                              path=self.path) from exc
         try:
             self._conn = sqlite3.connect(self.path)
+        except sqlite3.Error as exc:
+            raise CacheError(f"cannot open cache: {exc}", path=self.path) from exc
+        # Anything that fails past this point leaves the caller with no object
+        # to call close() on, so the connection has to be closed here or it
+        # leaks (and shows up as a ResourceWarning under pytest).
+        try:
             self._conn.row_factory = sqlite3.Row
-            # The pragmas belong inside the try: sqlite3.connect() opens a file
-            # lazily, so a path that is not a database only fails here, and it
-            # has to surface as a typed CacheError like every other cache fault.
+            # The pragmas run outside the connect try: sqlite3.connect() opens
+            # a file lazily, so a path that is not a database only fails here,
+            # and it has to surface as a typed CacheError like every other
+            # cache fault.
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.execute("PRAGMA synchronous=NORMAL")
+            self._migrate()
+        except CacheError:
+            self.close()
+            raise
         except sqlite3.Error as exc:
+            self.close()
             raise CacheError(f"cannot open cache: {exc}", path=self.path) from exc
-        self._migrate()
 
     # -- schema ------------------------------------------------------------
     def _migrate(self) -> None:
