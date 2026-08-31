@@ -49,6 +49,7 @@ Thumbs.db
 
 # Generated review artifacts and demo corpora
 output/
+sarif-out/
 .codesentry-cache/
 .ruff_cache/
 .mypy_cache/
