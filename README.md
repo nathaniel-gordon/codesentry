@@ -289,12 +289,12 @@ the commit conventions.
 
 ```
 $ python -m pytest tests --cov=reviewer --cov-report=term
-TOTAL                        2966    205    904     95    92%
-Required test coverage of 75.0% reached. Total coverage: 91.63%
+TOTAL                        2966    205    904     95    92→
+Required test coverage of 75.0→ reached. Total coverage: 91.63→
 414 passed in 15.97s
 ```
 
-414 tests, 91.6% combined line and branch coverage, floor 75%
+414 tests, 91.6→ combined line and branch coverage, floor 75→
 (`[tool.coverage.report] fail_under`). 149 of those are parametrized cases in
 `test_invariants.py`, so the count is not 414 independent scenarios - it is
 seventeen files' worth of behaviour, some of it swept over generated inputs.
