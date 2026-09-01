@@ -114,7 +114,7 @@ jobs:
       - run: python -m pip install -e .
       - name: analyze this repository with itself
         run: codesentry review reviewer --format sarif --out sarif-out
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: sarif-out/review.sarif
           category: codesentry
