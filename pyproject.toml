@@ -23,7 +23,7 @@ dependencies = []
 
 [project.optional-dependencies]
 llm = ["anthropic>=0.40"]
-dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "mypy>=1.11"]
+dev = ["pytest>=9.1.1", "pytest-cov>=5", "ruff>=0.6", "mypy>=1.11"]
 
 [project.scripts]
 codesentry = "reviewer.__main__:main"
