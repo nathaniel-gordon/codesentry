@@ -3,7 +3,7 @@
 # and the only long-lived use is as a base for a CI runner.
 #
 # Two stages so the runtime layer carries no build backend and no wheel cache.
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /src
 # Only what the build backend reads. The corpus, tests and docs are not part of
@@ -15,7 +15,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip build \
     && python -m build --wheel --outdir /dist
 
 
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # git is optional at runtime: without it the churn model falls back to its
 # static proxy and `codesentry health` reports the check as skipped rather than
